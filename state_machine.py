@@ -90,6 +90,9 @@ class StateMachine():
         if self.next_state == "set_close_waypoint":
             self.set_close_waypoint()
 
+        if self.next_state == "clear_waypoints":
+            self.clear_waypoints()
+
 
     """Functions run for each state"""
 
@@ -164,6 +167,16 @@ class StateMachine():
 
         self.waypoints.append(close_waypoint)   
 
+    def clear_waypoints(self):
+        """!
+        @brief      clear waypoints
+              Make sure you respect estop signal
+        """
+        self.status_message = "Waypoints have been reset"
+        self.next_state = "idle" 
+
+        self.waypoints = [[0,0,0,0,0]]
+
     def calibrate(self):
         """!
         @brief      Gets the user input to perform the calibration
@@ -209,7 +222,7 @@ class StateMachine():
         else:
             self.waypoints.append(self.rxarm.get_positions())
 
-        print(self.waypoints)
+        #print(self.waypoints)
 
 class StateMachineThread(QThread):
     """!

@@ -102,6 +102,8 @@ class Gui(QMainWindow):
         self.ui.btnUser6.clicked.connect(partial(nxt_if_arm_init, 'set_open_waypoint'))
         self.ui.btnUser7.setText('Set Close Waypoint')
         self.ui.btnUser7.clicked.connect(partial(nxt_if_arm_init, 'set_close_waypoint'))
+        self.ui.btnUser8.setText('Clear Waypoints Array')
+        self.ui.btnUser8.clicked.connect(partial(nxt_if_arm_init, 'clear_waypoints'))
         # Slidersworld
         for sldr in self.joint_sliders:
             sldr.valueChanged.connect(self.sliderChange)

@@ -52,6 +52,7 @@ class Camera():
         cam_angle = 13
         t = 180-cam_angle
         tt = 1.75
+        ttt = -1
         Tyb = np.array([[1,0,0,0],
            [0,1,0,350],
            [0,0,1,0],
@@ -71,10 +72,16 @@ class Camera():
            [math.sin(np.radians(tt)), math.cos(np.radians(tt)),0,0],
            [0,0,1,0],
            [0,0,0,1]])
+
+        Ryttt = np.array([[math.cos(np.radians(ttt)),0,math.sin(np.radians(ttt)),0],
+           [0,1,0,0],
+           [-1*math.sin(np.radians(ttt)),0, math.cos(np.radians(ttt)),0],
+           [0,0,0,1]])
  
         H = np.matmul(Tyb,Tzc)
         H = np.matmul(H,Rxt)
         H = np.matmul(H,Rztt)
+        H = np.matmul(H,Ryttt)
  
         return(H)
 

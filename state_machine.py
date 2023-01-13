@@ -84,6 +84,12 @@ class StateMachine():
         if self.next_state == "record_waypoint":
             self.record_waypoint()
 
+        if self.next_state == "set_open_waypoint":
+            self.set_open_waypoint()
+
+        if self.next_state == "set_close_waypoint":
+            self.set_close_waypoint()
+
 
     """Functions run for each state"""
 
@@ -118,15 +124,45 @@ class StateMachine():
         self.status_message = "State: Execute - Executing motion plan"
         self.next_state = "idle"
 
-        self.rxarm.set_moving_time(5.)
-        self.rxarm.set_accel_time(5.)
+        #self.rxarm.set_moving_time(2.)
+        #self.rxarm.set_accel_time(5.)
 
         for waypoint in self.waypoints:
 
-            self.rxarm.set_positions(waypoint)
+            if np.linalg.norm(waypoint) == np.linalg.norm(np.array([[ 3, 1, 40, -9.5, 0]])):
+                self.rxarm.open_gripper()
+
+            elif np.linalg.norm(waypoint) == np.linalg.norm(np.array([[ 2.5, 82, 87.5, -4.5, 0]])):
+                self.rxarm.close_gripper()
+
+            else:
+                self.rxarm.set_positions(waypoint)
+
             rospy.sleep(2.)
 
-        
+    def set_open_waypoint(self):
+        """!
+        @brief      open claw waypoint set
+              Make sure you respect estop signal
+        """
+        self.status_message = "Sets waypoint that robot knows means open le gripper"
+        self.next_state = "idle" 
+
+        open_waypoint = np.array([[ 3, 1, 40, -9.5, 0]])
+
+        self.waypoints.append(open_waypoint)               
+
+    def set_close_waypoint(self):
+        """!
+        @brief      close claw waypoint set
+              Make sure you respect estop signal
+        """
+        self.status_message = "Sets waypoint that robot  knows means close le gripper"
+        self.next_state = "idle" 
+
+        close_waypoint = np.array([[ 2.5, 82, 87.5, -4.5, 0]])
+
+        self.waypoints.append(close_waypoint)   
 
     def calibrate(self):
         """!

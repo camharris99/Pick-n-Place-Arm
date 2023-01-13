@@ -50,18 +50,33 @@ class Camera():
 
     def extrinsic_calc(self):
         cam_angle = 13
-        Rx = [[1, 0, 0],
-              [0, math.cos(np.radians(180+cam_angle)), -math.sin(np.radians(180+cam_angle))],
-            [0, math.sin(np.radians(180+cam_angle)), math.cos(np.radians(180+cam_angle))]]
- 
-        d = [[0],
-             [100],
-             [1097]]
- 
-        Hinv = np.append(np.transpose(Rx), np.matmul(np.transpose(np.negative(Rx)),d), axis=1)
-        Hinv = np.append(Hinv, [[0, 0, 0, 1]], axis=0)
-        return(Hinv)
+        t = 180-cam_angle
+        tt = 1.75
+        Tyb = np.array([[1,0,0,0],
+           [0,1,0,350],
+           [0,0,1,0],
+           [0,0,0,1]])
+   
+        Tzc = np.array([[1,0,0,0],
+           [0,1,0,0],
+           [0,0,1,990],
+           [0,0,0,1]])
+       
+        Rxt = np.array([[1,0,0,0],
+           [0,math.cos(np.radians(t)), -1*math.sin(np.radians(t)),0],
+           [0,math.sin(np.radians(t)), math.cos(np.radians(t)),0],
+           [0,0,0,1]])
 
+        Rztt = np.array([[math.cos(np.radians(tt)),-1*math.sin(np.radians(tt)),0,0],
+           [math.sin(np.radians(tt)), math.cos(np.radians(tt)),0,0],
+           [0,0,1,0],
+           [0,0,0,1]])
+ 
+        H = np.matmul(Tyb,Tzc)
+        H = np.matmul(H,Rxt)
+        H = np.matmul(H,Rztt)
+ 
+        return(H)
 
     def processVideoFrame(self):
         """!

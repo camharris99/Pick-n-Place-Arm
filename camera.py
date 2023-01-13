@@ -4,6 +4,7 @@ Class to represent the camera.
 
 import cv2
 import time
+import math
 import numpy as np
 from PyQt4.QtGui import QImage
 from PyQt4.QtCore import QThread, pyqtSignal, QTimer
@@ -33,8 +34,10 @@ class Camera():
 
         # mouse clicks & calibration variables
         self.cameraCalibrated = False
-        self.intrinsic_matrix = np.array([])
-        self.extrinsic_matrix = np.array([])
+        self.intrinsic_matrix = np.array([[903.5076,   0,  649.9839],
+                            [0,  907.2036,  333.0393],
+                            [0,  0,   0.9744]])
+        self.extrinsic_matrix = self.extrinsic_calc()
         self.last_click = np.array([0, 0])
         self.new_click = False
         self.rgb_click_points = np.zeros((5, 2), int)
@@ -44,6 +47,21 @@ class Camera():
         """ block info """
         self.block_contours = np.array([])
         self.block_detections = np.array([])
+
+    def extrinsic_calc(self):
+        cam_angle = 13
+        Rx = [[1, 0, 0],
+              [0, math.cos(np.radians(180+cam_angle)), -math.sin(np.radians(180+cam_angle))],
+            [0, math.sin(np.radians(180+cam_angle)), math.cos(np.radians(180+cam_angle))]]
+ 
+        d = [[0],
+             [100],
+             [1097]]
+ 
+        Hinv = np.append(np.transpose(Rx), np.matmul(np.transpose(np.negative(Rx)),d), axis=1)
+        Hinv = np.append(Hinv, [[0, 0, 0, 1]], axis=0)
+        return(Hinv)
+
 
     def processVideoFrame(self):
         """!

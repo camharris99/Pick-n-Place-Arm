@@ -96,8 +96,11 @@ class Gui(QMainWindow):
         self.ui.btnUser3.clicked.connect(lambda: self.rxarm.close_gripper())
         self.ui.btnUser4.setText('Execute')
         self.ui.btnUser4.clicked.connect(partial(nxt_if_arm_init, 'execute'))
+        self.ui.btnUser5.setText('Record Waypoint')
+        self.ui.btnUser5.clicked.connect(partial(nxt_if_arm_init, 'record_waypoint'))
 
-        # Sliders
+
+        # Slidersworld
         for sldr in self.joint_sliders:
             sldr.valueChanged.connect(self.sliderChange)
         self.ui.sldrMoveTime.valueChanged.connect(self.sliderChange)
@@ -220,9 +223,24 @@ class Gui(QMainWindow):
         pt = mouse_event.pos()
         if self.camera.DepthFrameRaw.any() != 0:
             z = self.camera.DepthFrameRaw[pt.y()][pt.x()]
+            intrinsic = self.camera.intrinsic_matrix
+            extrinsic = self.camera.extrinsic_matrix
             self.ui.rdoutMousePixels.setText("(%.0f,%.0f,%.0f)" %
                                              (pt.x(), pt.y(), z))
-            self.ui.rdoutMouseWorld.setText("(-,-,-)")
+
+            cam_coords = z*np.matmul(np.linalg.inv(intrinsic), [pt.x(), pt.y(), 1])
+            #print(str(pt.x()) + ", " + str(pt.y()))
+            # Rx = [[1 0 0], [0 cos]
+            H_inv = extrinsic
+            
+            #[[1.0000,     	0,     	0,     	0],
+     	    #            [0,   -0.9744,   -0.2250,  565.9806],
+     	    #            [0,	0.2250,   -0.9744,  895.6372],
+     	    #            [0,     	0,     	0,	1.0000]]
+         
+            world_coords = np.matmul(H_inv, np.append(cam_coords,1))
+            #print(np.append(cam_coords,1    ))
+            self.ui.rdoutMouseWorld.setText( "(%.0f, %.0f, %.0f)" % (world_coords[0], world_coords[1], world_coords[2]))
 
     def calibrateMousePress(self, mouse_event):
         """!

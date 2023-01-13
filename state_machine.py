@@ -26,8 +26,9 @@ class StateMachine():
         self.status_message = "State: Idle"
         self.current_state = "idle"
         self.next_state = "idle"
-        self.waypoints = [
-            [-np.pi/2,       -0.5,      -0.3,            0.0,       0.0],
+        self.waypoint_flag = False
+        self.waypoints = [[0,0,0,0,0]]
+        """  [-np.pi/2,       -0.5,      -0.3,            0.0,       0.0],
             [0.75*-np.pi/2,   0.5,      0.3,      0.0,       np.pi/2],
             [0.5*-np.pi/2,   -0.5,     -0.3,     np.pi / 2,     0.0],
             [0.25*-np.pi/2,   0.5,     0.3,     0.0,       np.pi/2],
@@ -36,7 +37,7 @@ class StateMachine():
             [0.5*np.pi/2,     0.5,     0.3,     np.pi / 2,     0.0],
             [0.75*np.pi/2,   -0.5,     -0.3,     0.0,       np.pi/2],
             [np.pi/2,         0.5,     0.3,      0.0,     0.0],
-            [0.0,             0.0,     0.0,      0.0,     0.0]]
+            [0.0,             0.0,     0.0,      0.0,     0.0]] """
 
     def set_next_state(self, state):
         """!
@@ -77,6 +78,12 @@ class StateMachine():
         if self.next_state == "manual":
             self.manual()
 
+        if self.next_state == "execute":
+            self.execute()
+
+        if self.next_state == "record_waypoint":
+            self.record_waypoint()
+
 
     """Functions run for each state"""
 
@@ -111,6 +118,16 @@ class StateMachine():
         self.status_message = "State: Execute - Executing motion plan"
         self.next_state = "idle"
 
+        self.rxarm.set_moving_time(5.)
+        self.rxarm.set_accel_time(5.)
+
+        for waypoint in self.waypoints:
+
+            self.rxarm.set_positions(waypoint)
+            rospy.sleep(2.)
+
+        
+
     def calibrate(self):
         """!
         @brief      Gets the user input to perform the calibration
@@ -139,6 +156,24 @@ class StateMachine():
             self.status_message = "State: Failed to initialize the rxarm!"
             rospy.sleep(5)
         self.next_state = "idle"
+
+    def record_waypoint(self):
+        """!
+        @brief      Records the current joint angles of the manipulator arm
+        """
+
+        self.status_message = "State: Record Waypoint - Recording Waypoint"
+        self.next_state = "idle"
+        #print('record_waypoint has been called')
+        #print(self.rxarm.get_positions())
+        
+        if self.waypoint_flag == False:
+            self.waypoints[0] = self.rxarm.get_positions()
+            self.waypoint_flag = True
+        else:
+            self.waypoints.append(self.rxarm.get_positions())
+
+        print(self.waypoints)
 
 class StateMachineThread(QThread):
     """!

@@ -195,6 +195,7 @@ class StateMachine():
             rospy.sleep(1)
             while(self.camera.new_click == False):
                 #print("in loop")
+                #could potentially replase this with "pass"
                 a = 0
             self.tags[i] = [self.camera.last_click[0],self.camera.last_click[1]]
             print(i)

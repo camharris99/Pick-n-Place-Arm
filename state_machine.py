@@ -93,6 +93,9 @@ class StateMachine():
         if self.next_state == "clear_waypoints":
             self.clear_waypoints()
 
+        if self.next_state == "calibrate":
+            self.calibrate()
+
 
     """Functions run for each state"""
 
@@ -182,10 +185,27 @@ class StateMachine():
         @brief      Gets the user input to perform the calibration
         """
         self.current_state = "calibrate"
-        self.next_state = "idle"
 
         """TODO Perform camera calibration routine here"""
+        self.status_message = "Starting  - Click an Apriltag"
+        # self.camera.new_click = False
+        self.tags = [[0,0],[0,0],[0,0],[0,0]]
+        for i in range(4):
+            self.camera.new_click == False
+            rospy.sleep(1)
+            while(self.camera.new_click == False):
+                #print("in loop")
+                a = 0
+            self.tags[i] = [self.camera.last_click[0],self.camera.last_click[1]]
+            print(i)
+            
+        
+        print("Clicked")
+        print(self.tags)
         self.status_message = "Calibration - Completed Calibration"
+
+        self.next_state = "idle"
+
 
     """ TODO """
     def detect(self):

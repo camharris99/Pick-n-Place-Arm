@@ -190,8 +190,17 @@ class StateMachine():
         self.status_message = "Starting  - Click an Apriltag"
         # self.camera.new_click = False
         self.tags = [[0,0],[0,0],[0,0],[0,0]]
+        # note that we probably want more points (based on the example code)
+        # self.tags_uvd = [[0,0,0],[0,0,0],[0,0,0],[0,0,0]]
+        # need this too:
+        # self.tags_xyz = [[0,0,0],[0,0,0],[0,0,0],[0,0,0]]
+        # get the xyz coords of the mouse location by inspection because they are known?
+        # i think these must be known because we can't calculate them without the extrinsic matrix
         for i in range(4):
+            #maybe add a rospy.sleep(1) here to make sure it picks up the self.camera.new_click = False
             self.camera.new_click == False
+            # add print statement here to check value of self.camera.new_click
+            # print(self.camera.new_click)
             rospy.sleep(1)
             while(self.camera.new_click == False):
                 #print("in loop")
@@ -199,7 +208,8 @@ class StateMachine():
                 a = 0
             self.tags[i] = [self.camera.last_click[0],self.camera.last_click[1]]
             print(i)
-            
+
+        # add a bunch of code here for the solvePnP stuff reference solve_extrinsic.py    
         
         print("Clicked")
         print(self.tags)

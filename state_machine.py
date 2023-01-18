@@ -5,7 +5,7 @@ from PyQt4.QtCore import (QThread, Qt, pyqtSignal, pyqtSlot, QTimer)
 import time
 import numpy as np
 import rospy
-
+import cv2
 class StateMachine():
     """!
     @brief      This class describes a state machine.
@@ -31,7 +31,7 @@ class StateMachine():
         """  [-np.pi/2,       -0.5,      -0.3,            0.0,       0.0],
             [0.75*-np.pi/2,   0.5,      0.3,      0.0,       np.pi/2],
             [0.5*-np.pi/2,   -0.5,     -0.3,     np.pi / 2,     0.0],
-            [0.25*-np.pi/2,   0.5,     0.3,     0.0,       np.pi/2],
+            [0.25*-np.pi/2,self.status_message = "Starting  - Click an Apriltag"   0.5,     0.3,     0.0,       np.pi/2],
             [0.0,             0.0,      0.0,         0.0,     0.0],
             [0.25*np.pi/2,   -0.5,      -0.3,      0.0,       np.pi/2],
             [0.5*np.pi/2,     0.5,     0.3,     np.pi / 2,     0.0],
@@ -180,6 +180,26 @@ class StateMachine():
 
         self.waypoints = [[0,0,0,0,0]]
 
+    def recover_homogenous_transform_pnp(self, image_points, world_points, K, D):
+        '''
+        Use SolvePnP to find the rigidbody transform representing the camera pose in
+        world coordinates (not working)
+        '''
+
+        # there is an error in this function when i call solvePnP :(
+        # not sure how to fix it 
+        distCoeffs = D
+        [_, R_exp, t] = cv2.solvePnP(world_points,
+                                 image_points,
+                                 K,
+                                 distCoeffs,
+                                 flags=cv2.SOLVEPNP_ITERATIVE)
+        R, _ = cv2.Rodrigues(R_exp)
+        return np.row_stack((np.column_stack((R, t)), (0, 0, 0, 1)))
+
+
+
+
     def calibrate(self):
         """!
         @brief      Gets the user input to perform the calibration
@@ -187,32 +207,73 @@ class StateMachine():
         self.current_state = "calibrate"
 
         """TODO Perform camera calibration routine here"""
-        self.status_message = "Starting  - Click an Apriltag"
-        # self.camera.new_click = False
-        self.tags = [[0,0],[0,0],[0,0],[0,0]]
-        # note that we probably want more points (based on the example code)
-        # self.tags_uvd = [[0,0,0],[0,0,0],[0,0,0],[0,0,0]]
-        # need this too:
-        # self.tags_xyz = [[0,0,0],[0,0,0],[0,0,0],[0,0,0]]
+        
+        self.tags_uvd = np.array([[0,0,0],[0,0,0],
+                                  [0,0,0],[0,0,0],
+                                  [0,0,0],[0,0,0],
+                                  [0,0,0],[0,0,0],
+                                  [0,0,0],[0,0,0],
+                                  [0,0,0],[0,0,0]])
+        
+        
         # get the xyz coords of the mouse location by inspection because they are known?
         # i think these must be known because we can't calculate them without the extrinsic matrix
-        for i in range(4):
-            #maybe add a rospy.sleep(1) here to make sure it picks up the self.camera.new_click = False
-            self.camera.new_click == False
-            # add print statement here to check value of self.camera.new_click
-            # print(self.camera.new_click)
-            rospy.sleep(1)
+        for i in range(12):
+            self.camera.new_click = False
+            # status messages are bunged ask for help bc they are not designed well
+            # how to send out updateStatusMessage mid-state?
+            self.status_message = "Starting  - Click Apriltag #" + str(i)
+                
+            
             while(self.camera.new_click == False):
-                #print("in loop")
+               
                 #could potentially replase this with "pass"
-                a = 0
-            self.tags[i] = [self.camera.last_click[0],self.camera.last_click[1]]
-            print(i)
+                pass
+            z = self.camera.DepthFrameRaw[self.camera.last_click[1]][self.camera.last_click[0]]
+            self.tags_uvd[i] = [self.camera.last_click[0],self.camera.last_click[1],z]
+            
 
-        # add a bunch of code here for the solvePnP stuff reference solve_extrinsic.py    
+        points_uv = np.delete(self.tags_uvd,-1,axis=1)
+        #print(points_uv)
+        depth_camera = np.transpose(np.delete(self.tags_uvd, (0,1), axis=1))
+        #print(depth_camera)
+
+        # these are factory calibration settings
+        D = np.array([0.13974332809448242, -0.45853713154792786, -0.0008287496748380363, 0.00018046400509774685, 0.40496668219566345])
         
+        K = np.array([[900.543212890625, 0.0, 655.990478515625], 
+                      [0.0, 900.89501953125, 353.4480285644531], 
+                      [0.0, 0.0, 1.0]])
+        Kinv = np.linalg.inv(K)
+
+        points_world = np.array([[-450, 425, 0], [450,425,0],[-450,275,0],
+                               [-250,275,0],[250,275,0],[450,275,0],
+                               [-450,-25,0],[-250,-25,0],[250,-25,0],
+                               [450,-25,0],[-450,-125,0],[450,-125,0]])
+        
+        points_ones = np.ones(depth_camera.size)
+
+        points_camera = np.transpose(depth_camera*np.dot(Kinv,np.transpose(np.column_stack((points_uv,points_ones)))))
+
+
+        #OpenCV SolvePNP calculate extrinsic matrix A
+        print(points_uv.astype(np.float64))
+        A_pnp = self.recover_homogenous_transform_pnp(points_world.astype(np.float32), points_uv.astype(np.float64),
+                                                      K.astype(np.float64),D.astype(np.float64)) # 
+        points_transformed_pnp = np.dot(np.linalg.inv(A_pnp), np.transpose(np.column_stack((points_camera, points_ones))))
+        
+        world_points = np.transpose(np.column_stack((points_world, points_ones)))
+
+        print("\nWorld Points: \n")
+        print(np.transpose(np.column_stack((points_world, points_ones))))
+
+
+        print("\nSolvePnP: \n")
+        print(A_pnp)
+        print(points_transformed_pnp.astype(int))
+
         print("Clicked")
-        print(self.tags)
+        #print(self.tags)
         self.status_message = "Calibration - Completed Calibration"
 
         self.next_state = "idle"
@@ -255,6 +316,7 @@ class StateMachine():
 
         #print(self.waypoints)
 
+   
 class StateMachineThread(QThread):
     """!
     @brief      Runs the state machine

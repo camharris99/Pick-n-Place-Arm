@@ -17,7 +17,9 @@
      {id: 1, size: .025, name: BASE},
      {id: 2, size: .025, name: LL},
      {id: 3, size: .025, name: TL},
-     {id: 4, size: .025, name: LR}
+     {id: 4, size: .025, name: LR},
+     {id: 5, size: .025, name: MR},
+     {id: 6, size: .025, name: ML}
    ]
 # ## Tag bundle definitions
 # ### Remarks

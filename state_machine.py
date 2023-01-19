@@ -215,24 +215,35 @@ class StateMachine():
                                   [0,0,0],[0,0,0],
                                   [0,0,0],[0,0,0]])
         
+        # using april tag locations
+        tags = np.zeros((6,3))
+        # print(tags)
+        for detection in self.camera.tag_detections.detections:
+            tags[detection.id[0]-1,0] = detection.pose.pose.pose.position.x
+            tags[detection.id[0]-1,1] = detection.pose.pose.pose.position.y
+            tags[detection.id[0]-1,2] = detection.pose.pose.pose.position.z
+        #     print(detection.id[0])
+        # print(tags)
+
         
         # get the xyz coords of the mouse location by inspection because they are known?
         # i think these must be known because we can't calculate them without the extrinsic matrix
-        for i in range(12):
-            self.camera.new_click = False
-            # status messages are bunged ask for help bc they are not designed well
-            # how to send out updateStatusMessage mid-state?
-            self.status_message = "Starting  - Click Apriltag #" + str(i)
+        # for i in range(12):
+        #     self.camera.new_click = False
+        #     # status messages are bunged ask for help bc they are not designed well
+        #     # how to send out updateStatusMessage mid-state?
+        #     self.status_message = "Starting  - Click Apriltag #" + str(i)
                 
             
-            while(self.camera.new_click == False):
+        #     while(self.camera.new_click == False):
                
-                #could potentially replase this with "pass"
-                pass
-            z = self.camera.DepthFrameRaw[self.camera.last_click[1]][self.camera.last_click[0]]
-            self.tags_uvd[i] = [self.camera.last_click[0],self.camera.last_click[1],z]
+        #         #could potentially replase this with "pass"
+        #         pass
+        #     z = self.camera.DepthFrameRaw[self.camera.last_click[1]][self.camera.last_click[0]]
+        #     self.tags_uvd[i] = [self.camera.last_click[0],self.camera.last_click[1],z]
             
 
+        
         points_uv = np.delete(self.tags_uvd,-1,axis=1)
         #print(points_uv)
         depth_camera = np.transpose(np.delete(self.tags_uvd, (0,1), axis=1))
@@ -258,7 +269,9 @@ class StateMachine():
 
         #OpenCV SolvePNP calculate extrinsic matrix A
         print(points_uv.astype(np.float64))
-        A_pnp = self.recover_homogenous_transform_pnp(points_world.astype(np.float32), points_uv.astype(np.float64),
+        print(points_world.astype(np.float64))
+        
+        A_pnp = self.recover_homogenous_transform_pnp(points_uv.astype(np.float64), points_world.astype(np.float64),
                                                       K.astype(np.float64),D.astype(np.float64)) # 
         points_transformed_pnp = np.dot(np.linalg.inv(A_pnp), np.transpose(np.column_stack((points_camera, points_ones))))
         
@@ -267,9 +280,12 @@ class StateMachine():
         print("\nWorld Points: \n")
         print(np.transpose(np.column_stack((points_world, points_ones))))
 
+        self.camera.extrinsic_matrix = np.linalg.inv(A_pnp)
 
         print("\nSolvePnP: \n")
+        print("Rotation Matrix:")
         print(A_pnp)
+        print("Calculated world coords:")
         print(points_transformed_pnp.astype(int))
 
         print("Clicked")

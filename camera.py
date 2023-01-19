@@ -43,7 +43,7 @@ class Camera():
         self.rgb_click_points = np.zeros((5, 2), int)
         self.depth_click_points = np.zeros((5, 2), int)
         self.tag_detections = np.array([])
-        self.tag_locations = [[-250, -25], [250, -25], [250, 275]]
+        self.tag_locations = [[-250, -25], [250, -25], [250, 275], [-250, 275], [-275, 150], [275, 150]]
         """ block info """
         self.block_contours = np.array([])
         self.block_detections = np.array([])
@@ -241,9 +241,9 @@ class TagDetectionListener:
 
     def callback(self, data):
         self.camera.tag_detections = data
-        #for detection in data.detections:
-        #print(detection.id[0])
-        #print(detection.pose.pose.pose.position)
+        # for detection in data.detections:
+        #     print(detection.id[0])
+        #     print(detection.pose.pose.pose.position)
 
 
 class CameraInfoListener:

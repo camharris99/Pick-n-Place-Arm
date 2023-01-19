@@ -208,11 +208,11 @@ class StateMachine():
 
         """TODO Perform camera calibration routine here"""
         
-        self.tags_uvd = np.zeros((6,3))
+        self.tags_uvd = np.zeros((8,3))
         
         # using april tag locations
-        tags = np.zeros((6,3))
-        # print(tags)
+        tags = np.zeros((8,3))
+        #print(tags)
         for detection in self.camera.tag_detections.detections:
             # extracting xyz coordinates from the apriltag data packet --> this data is X_c,Y_c,Z_c
             self.tags_uvd[detection.id[0]-1,0] = detection.pose.pose.pose.position.x / detection.pose.pose.pose.position.z
@@ -249,8 +249,8 @@ class StateMachine():
         Kinv = np.linalg.inv(K)
 
         points_world = np.array([[-250, -25, 0], [250,-25,0],[250,275,0],
-                               [-250,275,0],[425,-100,150],[-375,400,250],
-                               [75,200,65], [475,-150,95]])
+                               [-250,275,0],[475,-100,150],[-375,400,240],
+                               [75,200,60], [-475,-150,90]])
         #calculating the u, v, 1 pixel coordinate representation, structure is n x 3 matrix!!
         uvd_coords = np.transpose(np.matmul(K, np.transpose(self.tags_uvd)))
         #print(uvd_coords)
@@ -263,29 +263,34 @@ class StateMachine():
         points_ones = np.ones(depth_camera.size)
         
         # this is used later on for making sure stuff is calculated correctly
-        points_camera = np.transpose(depth_camera*np.dot(Kinv,np.transpose(np.column_stack((points_uv,points_ones)))))
-
+        #points_camera = np.transpose(depth_camera*np.dot(Kinv,np.transpose(np.column_stack((points_uv,points_ones)))))
+        points_camera = self.tags_uvd
+        
+        #print(points_camera)
         #OpenCV SolvePNP calculate extrinsic matrix A
         # inv(A_pnp) is the extrinsic rotation matrix!!!
         A_pnp = self.recover_homogenous_transform_pnp(points_uv.astype(np.float64), points_world.astype(np.float64),
-                                                      K.astype(np.float64),D.astype(np.float64)) # 
+                                                      K,D) # 
         # used for making sure calculations are correct later on
-        points_transformed_pnp = np.dot(np.linalg.inv(A_pnp), np.transpose(np.column_stack((points_camera, points_ones))))
+        #print("invA")
+        #print("camera points")
+        #print(np.transpose(np.column_stack((points_camera, points_ones))))
+        points_transformed_pnp = np.matmul(np.linalg.inv(A_pnp), np.transpose(np.column_stack((points_camera, points_ones))))
         #calculating world points for comparision
         world_points = np.transpose(np.column_stack((points_world, points_ones)))
 
-        # print("\nWorld Points: \n")
-        # print(np.transpose(np.column_stack((points_world, points_ones))))
+        print("\nWorld Points: \n")
+        print(world_points)
 
         self.camera.extrinsic_matrix = np.linalg.inv(A_pnp)
         # self.camera.extrinsic_matrix = (A_pnp)
 
 
-        # print("\nSolvePnP: \n")
-        # print("Rotation Matrix:")
-        # print(A_pnp)
-        # print("Calculated world coords:")
-        # print(points_transformed_pnp.astype(int))
+        print("\nSolvePnP: \n")
+        print("Rotation Matrix:")
+        print(A_pnp)
+        print("Calculated world coords:")
+        print(points_transformed_pnp.astype(int))
 
         #print("Clicked")
         #print(self.tags)

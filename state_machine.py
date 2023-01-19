@@ -208,24 +208,20 @@ class StateMachine():
 
         """TODO Perform camera calibration routine here"""
         
-        self.tags_uvd = np.array([[0,0,0],[0,0,0],
-                                  [0,0,0],[0,0,0],
-                                  [0,0,0],[0,0,0],
-                                  [0,0,0],[0,0,0],
-                                  [0,0,0],[0,0,0],
-                                  [0,0,0],[0,0,0]])
+        self.tags_uvd = np.zeros((6,3))
         
         # using april tag locations
         tags = np.zeros((6,3))
         # print(tags)
         for detection in self.camera.tag_detections.detections:
-            tags[detection.id[0]-1,0] = detection.pose.pose.pose.position.x
-            tags[detection.id[0]-1,1] = detection.pose.pose.pose.position.y
-            tags[detection.id[0]-1,2] = detection.pose.pose.pose.position.z
-        #     print(detection.id[0])
-        # print(tags)
+            # extracting xyz coordinates from the apriltag data packet --> this data is X_c,Y_c,Z_c
+            self.tags_uvd[detection.id[0]-1,0] = detection.pose.pose.pose.position.x / detection.pose.pose.pose.position.z
+            self.tags_uvd[detection.id[0]-1,1] = detection.pose.pose.pose.position.y / detection.pose.pose.pose.position.z
+            self.tags_uvd[detection.id[0]-1,2] = 1
+            # print()
+        #print(self.tags_uvd)
 
-        
+        # THIS IS THE MANAUAL CLICK-AND-COLLECT MODE
         # get the xyz coords of the mouse location by inspection because they are known?
         # i think these must be known because we can't calculate them without the extrinsic matrix
         # for i in range(12):
@@ -241,13 +237,7 @@ class StateMachine():
         #         pass
         #     z = self.camera.DepthFrameRaw[self.camera.last_click[1]][self.camera.last_click[0]]
         #     self.tags_uvd[i] = [self.camera.last_click[0],self.camera.last_click[1],z]
-            
-
         
-        points_uv = np.delete(self.tags_uvd,-1,axis=1)
-        #print(points_uv)
-        depth_camera = np.transpose(np.delete(self.tags_uvd, (0,1), axis=1))
-        #print(depth_camera)
 
         # these are factory calibration settings
         D = np.array([0.13974332809448242, -0.45853713154792786, -0.0008287496748380363, 0.00018046400509774685, 0.40496668219566345])
@@ -255,40 +245,49 @@ class StateMachine():
         K = np.array([[900.543212890625, 0.0, 655.990478515625], 
                       [0.0, 900.89501953125, 353.4480285644531], 
                       [0.0, 0.0, 1.0]])
+                      
         Kinv = np.linalg.inv(K)
 
-        points_world = np.array([[-450, 425, 0], [450,425,0],[-450,275,0],
-                               [-250,275,0],[250,275,0],[450,275,0],
-                               [-450,-25,0],[-250,-25,0],[250,-25,0],
-                               [450,-25,0],[-450,-125,0],[450,-125,0]])
+        points_world = np.array([[-250, -25, 0], [250,-25,0],[250,275,0],
+                               [-250,275,0],[425,-100,150],[-375,400,250],
+                               [75,200,65], [475,-150,95]])
+        #calculating the u, v, 1 pixel coordinate representation, structure is n x 3 matrix!!
+        uvd_coords = np.transpose(np.matmul(K, np.transpose(self.tags_uvd)))
+        #print(uvd_coords)
+        # getting just uv coords
+        points_uv = np.delete(uvd_coords,-1,axis=1)
+        #print(points_uv)
+        depth_camera = np.transpose(np.delete(uvd_coords, (0,1), axis=1))
+        #print(depth_camera)
         
         points_ones = np.ones(depth_camera.size)
-
+        
+        # this is used later on for making sure stuff is calculated correctly
         points_camera = np.transpose(depth_camera*np.dot(Kinv,np.transpose(np.column_stack((points_uv,points_ones)))))
 
-
         #OpenCV SolvePNP calculate extrinsic matrix A
-        print(points_uv.astype(np.float64))
-        print(points_world.astype(np.float64))
-        
+        # inv(A_pnp) is the extrinsic rotation matrix!!!
         A_pnp = self.recover_homogenous_transform_pnp(points_uv.astype(np.float64), points_world.astype(np.float64),
                                                       K.astype(np.float64),D.astype(np.float64)) # 
+        # used for making sure calculations are correct later on
         points_transformed_pnp = np.dot(np.linalg.inv(A_pnp), np.transpose(np.column_stack((points_camera, points_ones))))
-        
+        #calculating world points for comparision
         world_points = np.transpose(np.column_stack((points_world, points_ones)))
 
-        print("\nWorld Points: \n")
-        print(np.transpose(np.column_stack((points_world, points_ones))))
+        # print("\nWorld Points: \n")
+        # print(np.transpose(np.column_stack((points_world, points_ones))))
 
         self.camera.extrinsic_matrix = np.linalg.inv(A_pnp)
+        # self.camera.extrinsic_matrix = (A_pnp)
 
-        print("\nSolvePnP: \n")
-        print("Rotation Matrix:")
-        print(A_pnp)
-        print("Calculated world coords:")
-        print(points_transformed_pnp.astype(int))
 
-        print("Clicked")
+        # print("\nSolvePnP: \n")
+        # print("Rotation Matrix:")
+        # print(A_pnp)
+        # print("Calculated world coords:")
+        # print(points_transformed_pnp.astype(int))
+
+        #print("Clicked")
         #print(self.tags)
         self.status_message = "Calibration - Completed Calibration"
 

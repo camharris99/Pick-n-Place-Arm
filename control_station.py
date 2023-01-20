@@ -169,7 +169,7 @@ class Gui(QMainWindow):
             self.ui.videoDisplay.setPixmap(QPixmap.fromImage(tag_image))
         if (self.ui.radioUsr2.isChecked()):
             self.ui.videoDisplay.setPixmap(QPixmap.fromImage(grid_image))
-
+        
 
     """ Other callback functions attached to GUI elements"""
 

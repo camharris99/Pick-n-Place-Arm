@@ -241,7 +241,7 @@ class StateMachine():
 
         # these are factory calibration settings
         D = np.array([0.13974332809448242, -0.45853713154792786, -0.0008287496748380363, 0.00018046400509774685, 0.40496668219566345])
-        
+
         K = np.array([[900.543212890625, 0.0, 655.990478515625], 
                       [0.0, 900.89501953125, 353.4480285644531], 
                       [0.0, 0.0, 1.0]])
@@ -249,8 +249,8 @@ class StateMachine():
         Kinv = np.linalg.inv(K)
 
         points_world = np.array([[-250, -25, 0], [250,-25,0],[250,275,0],
-                               [-250,275,0],[475,-100,150],[-375,400,240],
-                               [75,200,60], [-475,-150,90]])
+                               [-250,275,0],[475,-100,154],[-375,400,242],
+                               [75,200,61], [-475,-150,92]])
         #calculating the u, v, 1 pixel coordinate representation, structure is n x 3 matrix!!
         uvd_coords = np.transpose(np.matmul(K, np.transpose(self.tags_uvd)))
         #print(uvd_coords)
@@ -273,24 +273,43 @@ class StateMachine():
                                                       K,D) # 
         # used for making sure calculations are correct later on
         #print("invA")
-        #print("camera points")
-        #print(np.transpose(np.column_stack((points_camera, points_ones))))
+        # print("camera points")
+        # print(np.transpose(np.column_stack((points_camera, points_ones))))
         points_transformed_pnp = np.matmul(np.linalg.inv(A_pnp), np.transpose(np.column_stack((points_camera, points_ones))))
         #calculating world points for comparision
         world_points = np.transpose(np.column_stack((points_world, points_ones)))
 
-        print("\nWorld Points: \n")
-        print(world_points)
+        # print("\nWorld Points: \n")
+        # print(world_points)
 
         self.camera.extrinsic_matrix = np.linalg.inv(A_pnp)
         # self.camera.extrinsic_matrix = (A_pnp)
 
+        src_pts = points_uv[0:4,:]
 
-        print("\nSolvePnP: \n")
-        print("Rotation Matrix:")
-        print(A_pnp)
-        print("Calculated world coords:")
-        print(points_transformed_pnp.astype(int))
+        x_cen = 600
+        y_cen = 350
+        x_max = x_cen + 250
+        x_min = x_cen - 250
+        y_min = y_cen - 125
+        y_max = y_cen + 175
+        scale = 1.025
+        pt1 = scale*np.array([x_min , y_max])
+        pt2 = scale*np.array([x_max , y_max])
+        pt3 = scale*np.array([x_max, y_min])
+        pt4 = scale*np.array([x_min, y_min])
+        dest_pts = np.array([pt1, pt2, pt3, pt4])
+        # print("src:")
+        # print(src_pts)
+        # print("dest:")
+        # print(dest_pts)
+        H = cv2.findHomography(src_pts, dest_pts)[0]
+        self.camera.homography = H
+        # print("\nSolvePnP: \n")
+        # print("Rotation Matrix:")
+        # print(A_pnp)
+        # print("Calculated world coords:")
+        # print(points_transformed_pnp.astype(int))
 
         #print("Clicked")
         #print(self.tags)

@@ -31,7 +31,7 @@ class Camera():
         self.DepthFrameRaw = np.zeros((720, 1280)).astype(np.uint16)
         """ Extra arrays for colormaping the depth image"""
         self.DepthFrameHSV = np.zeros((720, 1280, 3)).astype(np.uint8)
-        self.DepthFrameRGB = np.array([])
+        self.DepthFrameRGB = np.array([[]])
 
         # mouse clicks & calibration variables
         self.cameraCalibrated = False
@@ -48,11 +48,11 @@ class Camera():
         self.grid_points = np.array(np.meshgrid(self.grid_x_points, self.grid_y_points))
 
         self.tag_detections = np.array([])
-        self.tag_locations = [[-250, -25], [250, -25], [250, 275], [-250, 275], [-275, 150], [275, 150]]
+        self.tag_locations = [[-250, -25], [250, -25], [250, 275], [-250, 275],[-275, 150], [275, 150]]
         """ block info """
         self.block_contours = np.array([])
         self.block_detections = np.array([])
-
+        self.homography = np.array([])
     def extrinsic_calc(self):
         cam_angle = 13
         t = 180-cam_angle
@@ -131,6 +131,11 @@ class Camera():
 
         try:
             frame = cv2.resize(self.VideoFrame, (1280, 720))
+            #print(self.homography.size())
+            if (self.homography.size !=0):
+                #print("Applying warp")
+                frame = cv2.warpPerspective(frame,self.homography,(frame.shape[1], frame.shape[0]))
+
             img = QImage(frame, frame.shape[1], frame.shape[0],
                          QImage.Format_RGB888)
             return img
@@ -146,6 +151,10 @@ class Camera():
 
         try:
             frame = cv2.resize(self.GridFrame, (1280, 720))
+            if (self.homography.size !=0):
+                #print("Applying warp")
+                frame = cv2.warpPerspective(frame,self.homography,(frame.shape[1], frame.shape[0]))
+
             img = QImage(frame, frame.shape[1], frame.shape[0],
                          QImage.Format_RGB888)
             return img
@@ -175,6 +184,10 @@ class Camera():
 
         try:
             frame = cv2.resize(self.TagImageFrame, (1280, 720))
+            if (self.homography.size !=0):
+                #print("Applying warp")
+                frame = cv2.warpPerspective(frame,self.homography,(frame.shape[1], frame.shape[0]))
+
             img = QImage(frame, frame.shape[1], frame.shape[0],
                          QImage.Format_RGB888)
             return img
@@ -230,8 +243,18 @@ class Camera():
                     on the board into pixel coordinates. copy self.VideoFrame to self.GridFrame and
                     and draw on self.GridFrame the grid intersection points from self.grid_points
                     (hint: use the cv2.circle function to draw circles on the image)
+                    
+
         """
-        pass
+        #print(self.grid_points)
+        
+        for elements in self.grid_points:
+            
+            for elem in elements:
+                print(elem)
+                self.GridFrame = self.VideoFrame
+                self.GridFrame = cv2.circle(self.GridFrame, (int(elem[0,0]), int(elem[0,1])), 5, (0,0,255), 1)
+        
 
 
 class ImageListener:
@@ -243,7 +266,9 @@ class ImageListener:
 
     def callback(self, data):
         try:
+         
             cv_image = self.bridge.imgmsg_to_cv2(data, data.encoding)
+
         except CvBridgeError as e:
             print(e)
         self.camera.VideoFrame = cv_image

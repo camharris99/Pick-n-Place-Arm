@@ -45,6 +45,7 @@ class Camera():
         self.depth_click_points = np.zeros((5, 2), int)
         self.grid_x_points = np.arange(-450, 500, 50)
         self.grid_y_points = np.arange(-175, 525, 50)
+        self.xgrid_coord, self.ygrid_coord = np.meshgrid(self.grid_x_points, self.grid_y_points)
         self.grid_points = np.array(np.meshgrid(self.grid_x_points, self.grid_y_points))
 
         self.tag_detections = np.array([])
@@ -248,12 +249,34 @@ class Camera():
         """
         #print(self.grid_points)
         
-        for elements in self.grid_points:
-            
-            for elem in elements:
-                print(elem)
+        #for elements in self.grid_points:
+        K = np.array([[900.543212890625, 0.0, 655.990478515625], 
+                      [0.0, 900.89501953125, 353.4480285644531], 
+                      [0.0, 0.0, 1.0]])
+
+        for i in range(14):
+
+            for j in range(19):
+
+                #print(str(i) + ", " + str(j))
                 self.GridFrame = self.VideoFrame
-                self.GridFrame = cv2.circle(self.GridFrame, (int(elem[0,0]), int(elem[0,1])), 5, (0,0,255), 1)
+                
+                x = self.xgrid_coord[i,j]
+                y = self.ygrid_coord[i,j]
+                #z = self.DepthFrameRaw[y][x]
+                #x /= z
+                #y /= z
+                print(str(int(x)) + ", " + str(int(y)))
+                cam_coord = np.array([[x,y,1]])
+                if self.homography.size == 0:
+                    uvd = np.matmul(K,  np.transpose(cam_coord))
+                else:
+                    uvd = np.matmul(np.linalg.inv(self.homography), np.matmul(K,  np.transpose(cam_coord)))
+                    
+                u = uvd[0,0]/1000
+                v = uvd[1,0]/1000
+                print(str(int(u)) + ", " + str(int(v)))
+                self.GridFrame = cv2.circle(self.GridFrame, (int(u), int(v)), 5, (0,0,255), 1)
         
 
 

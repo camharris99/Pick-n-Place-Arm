@@ -103,6 +103,34 @@ def FK_pox(joint_angles, m_mat, s_lst):
 
     @return     a 4x4 homogeneous matrix representing the pose of the desired link
     """
+
+    l1 = 103.91
+    l2 = 200
+    l3 = 50
+    l4 = 200
+    l5 = 174.15-(43.15/2)
+
+    p1 = np.array([[0],[0],[0]])
+    p2 = np.array([[0],[0],[l1]])
+    p3 = np.array([[0],[l3],[l1+l2]])
+    p4 = np.array([[0],[l3+l4],[l1+l2]])
+    p5 = np.array([[0],[l3+l4+l5],[l1+l2]])
+
+    w1 = np.array([[0],[0],[1]])
+    w2 = np.array([[-1],[0],[0]])
+    w3 = np.array([[-1],[0],[0]])
+    w4 = np.array([[-1],[0],[0]])
+    w5 = np.array([[0],[1],[0]])
+
+    v1 = np.cross(-1*w1,p1)
+    v2 = np.cross(-1*w2,p2)
+    v3 = np.cross(-1*w3,p3)
+    v4 = np.cross(-1*w4,p4)
+    v5 = np.cross(-1*w5,p5)
+
+    
+
+
     pass
 
 

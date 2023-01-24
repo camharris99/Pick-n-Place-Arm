@@ -13,7 +13,7 @@ You will upgrade some functions and also implement others according to the comme
 """
 import numpy as np
 from functools import partial
-from kinematics import FK_dh, FK_pox, get_pose_from_T
+from kinematics import FK_dh, FK_pox, get_pose_from_T, to_s_matrix
 import time
 import csv
 from builtins import super
@@ -82,8 +82,15 @@ class RXArm(InterbotixRobot):
         if (dh_config_file is not None):
             self.dh_params = RXArm.parse_dh_param_file(dh_config_file)
         #POX params
-        self.M_matrix = []
-        self.S_list = []
+        self.M_matrix = np.array([[1, 0, 0, 0],
+                                  [0, 1, 0, 402.38],
+                                  [0, 0, 1, 303.91],
+                                  [0, 0, 0, 1]])
+        self.S_list =   [[0, 0, 1, 0, 0, 0],
+                         [1, 0, 0, 0, 103.91, 0],
+                         [1, 0, 0, 0, 303.91, -50],
+                         [1, 0, 0, 0, 303.91, -250],
+                         [0, 1, 0, -303.91, 0, 0]]
 
     def initialize(self):
         """!
@@ -181,7 +188,7 @@ class RXArm(InterbotixRobot):
         return self.effort_fb
 
 
-#   @_ensure_initialized
+    # @_ensure_initialized
 
     def get_ee_pose(self):
         """!
@@ -189,7 +196,12 @@ class RXArm(InterbotixRobot):
 
         @return     The EE pose as [x, y, z, phi] or as needed.
         """
-        return [0, 0, 0, 0]
+        transform_mat = FK_pox(self.get_positions(), self.M_matrix, self.S_list)
+        pos_array = np.dot(transform_mat, np.array([[0], [0], [0], [1]]))
+        pos = [0,0,0,0]
+        for i in range(4):
+            pos[i] = pos_array[i]
+        return pos
 
     @_ensure_initialized
     def get_wrist_pose(self):

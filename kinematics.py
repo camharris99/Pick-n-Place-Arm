@@ -8,6 +8,8 @@ There are some functions to start with, you may need to implement a few more
 import numpy as np
 # expm is a matrix exponential function
 from scipy.linalg import expm
+import math
+import rospy
 
 
 def clamp(angle):
@@ -89,6 +91,25 @@ def get_pose_from_T(T):
     """
     pass
 
+def skew(x):
+    skew = np.array([[0, -x[2], x[1]],
+                     [x[2], 0, -x[0]],
+                     [-x[1], x[0], 0]])
+    return skew
+
+def rodrigues(theta, w, v):
+    w_hat = skew(w)
+    S = np.hstack((w_hat,np.transpose(np.expand_dims(v,axis=0))))
+    S = np.vstack((S,np.array([[0,0,0,0]])))
+    # t = np.dot(np.identity(3)*theta + (1-math.cos(theta))*w_hat +
+    #           (theta-math.sin(theta))*np.dot(w_hat,np.transpose(w_hat)),v)
+    # R = expm(w_hat*theta)
+    # output = np.hstack((R,np.expand_dims(t,axis=1)))
+    # output = np.vstack((output,np.array([[0,0,0,1]])))
+    output = expm(S*theta)
+    return output
+
+
 
 def FK_pox(joint_angles, m_mat, s_lst):
     """!
@@ -103,36 +124,15 @@ def FK_pox(joint_angles, m_mat, s_lst):
 
     @return     a 4x4 homogeneous matrix representing the pose of the desired link
     """
+    product1 = rodrigues(joint_angles[0],s_lst[0][0:3],s_lst[0][3:6])
+    product2 = rodrigues(-1*joint_angles[1],s_lst[1][0:3],s_lst[1][3:6])
+    product3 = rodrigues(joint_angles[2],s_lst[2][0:3],s_lst[2][3:6])
+    product4 = rodrigues(joint_angles[3],s_lst[3][0:3],s_lst[3][3:6])
+    product5 = rodrigues(joint_angles[4],s_lst[4][0:3],s_lst[4][3:6])
 
-    l1 = 103.91
-    l2 = 200
-    l3 = 50
-    l4 = 200
-    l5 = 174.15-(43.15/2)
+    product = np.dot(product1,np.dot(product2,np.dot(product3,np.dot(product4,np.dot(product5,m_mat)))))
 
-    p1 = np.array([[0],[0],[0]])
-    p2 = np.array([[0],[0],[l1]])
-    p3 = np.array([[0],[l3],[l1+l2]])
-    p4 = np.array([[0],[l3+l4],[l1+l2]])
-    p5 = np.array([[0],[l3+l4+l5],[l1+l2]])
-
-    w1 = np.array([[0],[0],[1]])
-    w2 = np.array([[-1],[0],[0]])
-    w3 = np.array([[-1],[0],[0]])
-    w4 = np.array([[-1],[0],[0]])
-    w5 = np.array([[0],[1],[0]])
-
-    v1 = np.cross(-1*w1,p1)
-    v2 = np.cross(-1*w2,p2)
-    v3 = np.cross(-1*w3,p3)
-    v4 = np.cross(-1*w4,p4)
-    v5 = np.cross(-1*w5,p5)
-
-    
-
-
-    pass
-
+    return product
 
 def to_s_matrix(w, v):
     """!
@@ -146,6 +146,7 @@ def to_s_matrix(w, v):
 
     @return     { description_of_the_return_value }
     """
+    s_matrix = np.hstack((w,v))
     pass
 
 

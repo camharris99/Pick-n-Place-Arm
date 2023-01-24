@@ -146,9 +146,9 @@ class Gui(QMainWindow):
     ### TODO: output the rest of the orientation according to the convention chosen
     @pyqtSlot(list)
     def updateEndEffectorReadout(self, pos):
-        self.ui.rdoutX.setText(str("%+.2f mm" % (1000 * pos[0])))
-        self.ui.rdoutY.setText(str("%+.2f mm" % (1000 * pos[1])))
-        self.ui.rdoutZ.setText(str("%+.2f mm" % (1000 * pos[2])))
+        self.ui.rdoutX.setText(str("%+.2f mm" % (pos[0])))
+        self.ui.rdoutY.setText(str("%+.2f mm" % (pos[1])))
+        self.ui.rdoutZ.setText(str("%+.2f mm" % (pos[2])))
         #self.ui.rdoutPhi.setText(str("%+.2f rad" % (pos[3])))
         #self.ui.rdoutTheta.setText(str("%+.2f" % (pos[4])))
         #self.ui.rdoutPsi.setText(str("%+.2f" % (pos[5])))
@@ -230,15 +230,40 @@ class Gui(QMainWindow):
 
         pt = mouse_event.pos()
         if self.camera.DepthFrameRaw.any() != 0:
+            
             z = self.camera.DepthFrameRaw[pt.y()][pt.x()]
             intrinsic = self.camera.intrinsic_matrix
             extrinsic = self.camera.extrinsic_matrix
-            self.ui.rdoutMousePixels.setText("(%.0f,%.0f,%.0f)" %
+            
+            if self.camera.homography.size != 0:
+                #print(self.camera.homography)
+                uv_trans = np.zeros([3,1])
+                #print(np.array([[pt.x()],[pt.y()],[z]]))
+                uv_hom = np.array([[pt.x()],[pt.y()],[1]])
+                uv_trans = np.matmul( np.linalg.inv(self.camera.homography) , uv_hom )
+                uv_trans[0,0] /= uv_trans[2,0]
+                uv_trans[1,0] /= uv_trans[2,0]
+                uv_trans[2,0] = 1
+                #self.ui.rdoutMousePixels.setText("(%.0f,%.0f,%.0f)" %
+                 #                            (uv_trans[0,0], uv_trans[1,0], uv_trans[2,0]))
+                #print(uv_trans)
+                z = self.camera.DepthFrameRaw[int(uv_trans[1,0])][int(uv_trans[0,0])]
+                #print(z)
+                cam_coords = z*np.matmul(np.linalg.inv(intrinsic), uv_trans)
+                #print(cam_coords)
+                #cam_coords = z*np.matmul(np.linalg.inv(intrinsic), [pt.x(), pt.y(), 1]) 
+                
+                #H_inv = np.matmul( np.linalg.inv(self.camera.homography) , extrinsic )
+                self.ui.rdoutMousePixels.setText("(%.0f,%.0f,%.0f)" %
                                              (pt.x(), pt.y(), z))
 
-            cam_coords = z*np.matmul(np.linalg.inv(intrinsic), [pt.x(), pt.y(), 1])
+            else:
+                self.ui.rdoutMousePixels.setText("(%.0f,%.0f,%.0f)" %
+                                             (pt.x(), pt.y(), z))
+
+                cam_coords = z*np.matmul(np.linalg.inv(intrinsic), [pt.x(), pt.y(), 1])
             #print(str(pt.x()) + ", " + str(pt.y()))
-            H_inv = extrinsic
+            H_inv =  extrinsic
          
             world_coords = np.matmul(H_inv, np.append(cam_coords,1))
             #print(np.append(cam_coords,1    ))

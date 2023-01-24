@@ -266,7 +266,7 @@ class Camera():
                 #z = self.DepthFrameRaw[y][x]
                 #x /= z
                 #y /= z
-                print(str(int(x)) + ", " + str(int(y)))
+                #print(str(int(x)) + ", " + str(int(y)))
                 cam_coord = np.array([[x,y,1]])
                 if self.homography.size == 0:
                     uvd = np.matmul(K,  np.transpose(cam_coord))
@@ -275,7 +275,7 @@ class Camera():
                     
                 u = uvd[0,0]/1000
                 v = uvd[1,0]/1000
-                print(str(int(u)) + ", " + str(int(v)))
+                #print(str(int(u)) + ", " + str(int(v)))
                 self.GridFrame = cv2.circle(self.GridFrame, (int(u), int(v)), 5, (0,0,255), 1)
         
 

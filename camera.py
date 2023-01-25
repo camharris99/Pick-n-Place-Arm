@@ -46,7 +46,7 @@ class Camera():
         self.grid_x_points = np.arange(-450, 500, 50)
         self.grid_y_points = np.arange(-175, 525, 50)
         self.xgrid_coord, self.ygrid_coord = np.meshgrid(self.grid_x_points, self.grid_y_points)
-        self.grid_points = np.array(np.meshgrid(self.grid_x_points, self.grid_y_points))
+        self.grid_points = np.array(np.meshgrid(self.grid_x_points, self.grid_y_points)).T.reshape(-1,2)
 
         self.tag_detections = np.array([])
         self.tag_locations = [[-250, -25], [250, -25], [250, 275], [-250, 275],[-275, 150], [275, 150]]
@@ -253,30 +253,48 @@ class Camera():
         K = np.array([[900.543212890625, 0.0, 655.990478515625], 
                       [0.0, 900.89501953125, 353.4480285644531], 
                       [0.0, 0.0, 1.0]])
+        
+        # for i in range(14):
 
-        for i in range(14):
+        #     for j in range(19):
 
-            for j in range(19):
-
-                #print(str(i) + ", " + str(j))
-                self.GridFrame = self.VideoFrame
+        #         #print(str(i) + ", " + str(j))
+        #         self.GridFrame = self.VideoFrame
                 
-                x = self.xgrid_coord[i,j]
-                y = self.ygrid_coord[i,j]
-                #z = self.DepthFrameRaw[y][x]
-                #x /= z
-                #y /= z
-                #print(str(int(x)) + ", " + str(int(y)))
-                cam_coord = np.array([[x,y,1]])
-                if self.homography.size == 0:
-                    uvd = np.matmul(K,  np.transpose(cam_coord))
-                else:
-                    uvd = np.matmul(np.linalg.inv(self.homography), np.matmul(K,  np.transpose(cam_coord)))
-                    
-                u = uvd[0,0]/1000
-                v = uvd[1,0]/1000
+        #         x = self.xgrid_coord[i,j]
+        #         y = self.ygrid_coord[i,j]
+        #         #z = self.DepthFrameRaw[y][x]
+        #         #x /= z
+        #         #y /= z
+        #         #print(str(int(x)) + ", " + str(int(y)))
+        #         cam_coord = np.array([[x,y,1]])
+        #         if self.homography.size == 0:
+        #             uvd = np.matmul(K,  np.transpose(cam_coord))
+        #         else:
+        #             uvd = np.matmul(np.linalg.inv(self.homography), np.matmul(K,  np.transpose(cam_coord)))
+                # u = uvd[0,0]/1000
+                # v = uvd[1,0]/1000
                 #print(str(int(u)) + ", " + str(int(v)))
-                self.GridFrame = cv2.circle(self.GridFrame, (int(u), int(v)), 5, (0,0,255), 1)
+        self.GridFrame = self.VideoFrame.copy()
+        board_points_3D = np.column_stack( (self.grid_points, np.zeros(self.grid_points.shape[0])))
+
+        board_points_homog = np.column_stack( (board_points_3D , np.ones(self.grid_points.shape[0])))
+
+        P = np.column_stack((K, [0.,0.,0.]))
+
+        #pixel_locations = np.transpose(np.matmul(P, 1/self.extrinsic_matrix[2,3] * np.matmul(self.extrinsic_matrix, np.transpose(board_points_homog))))
+        #pixel_locations = np.transpose(np.matmul( 1/(self.extrinsic_matrix[2,3]) * P, np.matmul(np.linalg.inv(self.extrinsic_matrix), np.transpose(board_points_homog) ) ) )
+
+        #pixel_location_homog = np.transpose( np.matmul(self.homography, np.transpose(pixel_locations_og) ))
+        #$print(pixel_locations)
+
+        for point in board_points_homog:
+
+            camera_cords = np.matmul(np.linalg.inv(self.extrinsic_matrix), point)
+
+            pixel = np.matmul( 1 / camera_cords[2] * K , np.transpose([camera_cords[0],camera_cords[1],camera_cords[2]]))
+
+            self.GridFrame = cv2.circle(self.GridFrame, (int(pixel[0]), int(pixel[1])), 5, (0,0,255), 1)
         
 
 

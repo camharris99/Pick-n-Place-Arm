@@ -13,7 +13,7 @@ You will upgrade some functions and also implement others according to the comme
 """
 import numpy as np
 from functools import partial
-from kinematics import FK_dh, FK_pox, get_pose_from_T, to_s_matrix
+from kinematics import FK_dh, FK_pox, get_pose_from_T, to_s_matrix, get_euler_angles_from_T
 import time
 import csv
 from builtins import super
@@ -83,8 +83,8 @@ class RXArm(InterbotixRobot):
             self.dh_params = RXArm.parse_dh_param_file(dh_config_file)
         #POX params
         self.M_matrix = np.array([[1, 0, 0, 0],
-                                  [0, 1, 0, 402.38],
-                                  [0, 0, 1, 303.91],
+                                  [0, 1, 0, 402.38+10],
+                                  [0, 0, 1, 303.91+5],
                                   [0, 0, 0, 1]])
         self.S_list =   [[0, 0, 1, 0, 0, 0],
                          [1, 0, 0, 0, 103.91, 0],
@@ -198,9 +198,13 @@ class RXArm(InterbotixRobot):
         """
         transform_mat = FK_pox(self.get_positions(), self.M_matrix, self.S_list)
         pos_array = np.dot(transform_mat, np.array([[0], [0], [0], [1]]))
-        pos = [0,0,0,0]
-        for i in range(4):
-            pos[i] = pos_array[i]
+        angle_array = get_euler_angles_from_T(transform_mat)
+        pos = [0,0,0,0,0,0]
+        for i in range(6):
+            if (i < 3):
+                pos[i] = pos_array[i]
+            else:
+                pos[i] = angle_array[i-3]
         return pos
 
     @_ensure_initialized

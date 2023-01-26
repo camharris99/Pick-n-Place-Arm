@@ -76,7 +76,21 @@ def get_euler_angles_from_T(T):
 
     @return     The euler angles from T.
     """
-    pass
+
+    singular_test = math.sqrt(T[0,0]*T[0,0] + T[1,0]*T[1,0])
+
+    singular = singular_test < 1e-6
+
+    if not singular:
+        psi = math.atan2(T[2,1],T[2,2])
+        theta = math.atan2(-T[2,0],singular_test)
+        phi = math.atan2(T[1,0],T[0,0])
+    else:
+        psi = math.atan2(-T[1,2],T[1,1])
+        theta = math.atan2(-T[2,0],singular_test)
+        phi = 0
+
+    return [phi,theta,psi]
 
 
 def get_pose_from_T(T):

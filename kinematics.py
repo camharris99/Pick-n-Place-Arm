@@ -176,4 +176,87 @@ def IK_geometric(dh_params, pose):
     @return     All four possible joint configurations in a numpy array 4x4 where each row is one possible joint
                 configuration
     """
-    pass
+    x_c = pose[0,0]
+    y_c = pose[1,0]
+    z_c = pose[2,0]
+    d_1 = 103.91 # [mm]
+    l_2 = 205.73 # [mm]
+    d_2 = 50 # [mm]
+    l_3 = 200 # [mm]
+
+    soln = np.zeros([4,5])
+
+    # NOTE: all the following calculations are done without the link offsets, so we will need to correct these accordingly after calculating
+
+    # first calculate the two possible --> pi/2 offset to account for difference in world frame versus IK frame
+    # first solution for theta 1
+    theta_11 = math.atan2(y_c,x_c) - math.pi/2
+    # section solution is pi radians from the first solution
+    theta_12 = math.pi/2 + math.atan2(y_c,x_c)
+
+    # now calculating theta 3 , which will subsequently be used to calculate theta 2
+
+        # note use -r when finding the theta 3 and theta 2 values with the second theta 1 solution
+    
+    r = math.sqrt( x_c**2 + y_c**2 )
+    s = math.sqrt( ( z_c - d_1 )**2 )
+    # theta 3 calculation --> there are two solutions (elbow up and elbow down)
+    # this is for the "normal" theta 1 configuration
+    theta_31 = math.acos( ( ( r**2 + s**2) - l_2**2 - l_3**2 ) / ( 2*l_2*l_3 ) )
+    theta_32 = -1 * math.acos( ( ( r**2 + s**2) - l_2**2 - l_3**2 ) / ( 2*l_2*l_3 ) )
+    # theta 2 calculation corresponding to each theta 3 value
+    theta_21 = math.atan2(s,r) - math.atan2( l_3*math.sin(theta_31), l_2+l_3*math.cos(theta_31))
+    theta_22 = math.atan2(s,r) - math.atan2( l_3*math.sin(theta_32), l_2+l_3*math.cos(theta_32))
+
+    # now lets calculate the other solutions for theta2 and theta3 but with the "abnormal" theta1 value
+
+    theta_31_2 = math.acos( ( ( (-r)**2 + s**2) - l_2**2 - l_3**2 ) / ( 2*l_2*l_3 ) )
+    theta_32_2 = -1 * math.acos( ( ( (-r)**2 + s**2) - l_2**2 - l_3**2 ) / ( 2*l_2*l_3 ) )
+    
+    theta_21_2 = math.atan2(s,-r) - math.atan2( l_3*math.sin(theta_31), l_2+l_3*math.cos(theta_31))
+    theta_22_2 = math.atan2(s,-r) - math.atan2( l_3*math.sin(theta_32), l_2+l_3*math.cos(theta_32))
+    
+    # now we need to correct the theta_3 and theta_2 values to account for the offsets d_1 and the offset between the bicep and forearm links
+    
+    # first solution correction (theta1 = atan2(xc,yc) - pi.2)
+    theta_31c = theta_31 + math.pi/2 - math.atan(d_2/l_3)
+    theta_32c = theta_32 + math.pi/2 - math.atan(d_2/l_3)
+    theta_21c = math.pi/2 + math.atan(d_2/l_3) - theta_21
+    theta_22c = math.pi/2 + math.atan(d_2/l_3) - theta_22
+    
+    # section solution correction (theta1 = atan2(xc,yc) + pi.2)
+    theta_31_2c =  theta_31_2 + math.pi/2 - math.atan(d_2/l_3)
+    theta_32_2c = theta_32_2 + math.pi/2 - math.atan(d_2/l_3)
+    theta_21_2c = math.pi/2 + math.atan(d_2/l_3) - theta_21_2
+    theta_22_2c = math.pi/2 + math.atan(d_2/l_3) - theta_22_2
+
+    # calculating R03 now that theta 1-3 are known
+    th123 = np.zeros([4,3])
+    th123[0,:] = [theta_11 , theta_21c , theta_31c, theta_41 , theta_51]
+    th123[1,:] = [theta_11 , theta_22c , theta_32c, theta_42 , theta_52]
+    th123[2,:] = [theta_12 , theta_21_2c , theta_31_2c, theta_41_2 , theta_51_2]
+    th123[3,:] = [theta_12 , theta_22_2c , theta_32_2c, theta_41_2 , theta_51_2]
+    
+    R03 = np.zeros([3,3])
+    
+    for elem in th123:
+        R03
+
+    # allotted space for calculating theta_4 and theta_5... rip haha
+
+    theta_41 = 0
+    theta_42 = 0
+    theta_51 = 0
+    theta_52 = 0
+    
+    theta_41_2 = 0
+    theta_42_2 = 0
+    theta_51_2 = 0
+    theta_52_2 = 0
+
+    soln[0,:] = [theta_11 , theta_21c , theta_31c, theta_41 , theta_51]
+    soln[1,:] = [theta_11 , theta_22c , theta_32c, theta_42 , theta_52]
+    soln[2,:] = [theta_12 , theta_21_2c , theta_31_2c, theta_41_2 , theta_51_2]
+    soln[3,:] = [theta_12 , theta_22_2c , theta_32_2c, theta_41_2 , theta_51_2]
+
+    return soln

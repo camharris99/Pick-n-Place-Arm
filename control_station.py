@@ -36,6 +36,7 @@ class Gui(QMainWindow):
         QWidget.__init__(self, parent)
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
+        self.MouseXYZ = np.zeros([3,1])
         """ Groups of ui commonents """
         self.joint_readouts = [
             self.ui.rdoutBaseJC,
@@ -266,17 +267,34 @@ class Gui(QMainWindow):
             H_inv =  extrinsic
          
             world_coords = np.matmul(H_inv, np.append(cam_coords,1))
+            self.MouseXYZ[:,0] = np.array( [ [world_coords[0]], [world_coords[1]], [world_coords[2]] ] )
             #print(np.append(cam_coords,1    ))
             self.ui.rdoutMouseWorld.setText( "(%.0f, %.0f, %.0f)" % (world_coords[0], world_coords[1], world_coords[2]))
 
     def calibrateMousePress(self, mouse_event):
         """!
-        @brief Record mouse click positions for calibration
+        @brief Record mouse click positions for calibration --> we actually are just using this for IK not calibration... could
+               change the file name but we might need to change it elsewhere so be aware of that
 
         @param      mouse_event  QtMouseEvent containing the pose of the mouse at the time of the event not current time
         """
         """ Get mouse posiiton """
         pt = mouse_event.pos()
+        pose = np.zeros([6,1])
+        # left click!
+        if mouse_event.button() == 1:
+            
+            pass
+
+        # right click!    
+        elif mouse_event.button() == 2:
+            # setting x,y,z position
+            pose[0:2,0] = self.MouseXYZ
+            # setting phi, theta, psi values -- keeping as zero for now b/c this shit no work!
+            # no change to pose because these values are already zero
+            # now we should call the inverse kinematics function to return the joint angles to reach the desired mouse position
+            self.kinematics.IK_geometric(pose)
+
         self.camera.last_click[0] = pt.x()
         self.camera.last_click[1] = pt.y()
         self.camera.new_click = True

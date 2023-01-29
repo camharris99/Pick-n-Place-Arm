@@ -230,33 +230,56 @@ def IK_geometric(dh_params, pose):
     theta_21_2c = math.pi/2 + math.atan(d_2/l_3) - theta_21_2
     theta_22_2c = math.pi/2 + math.atan(d_2/l_3) - theta_22_2
 
+    # NOTE: SKIP THIS R03 SECTION I THINK FOR NOW IT IS NOT WORTH THE TROUBLE
+
     # calculating R03 now that theta 1-3 are known
-    th123 = np.zeros([4,3])
-    th123[0,:] = [theta_11 , theta_21c , theta_31c, theta_41 , theta_51]
-    th123[1,:] = [theta_11 , theta_22c , theta_32c, theta_42 , theta_52]
-    th123[2,:] = [theta_12 , theta_21_2c , theta_31_2c, theta_41_2 , theta_51_2]
-    th123[3,:] = [theta_12 , theta_22_2c , theta_32_2c, theta_41_2 , theta_51_2]
+    #th123 = np.zeros([4,3])
+    #th123[0,:] = [theta_11 , theta_21c , theta_31c, theta_41 , theta_51]
+    #th123[1,:] = [theta_11 , theta_22c , theta_32c, theta_42 , theta_52]
+    #th123[2,:] = [theta_12 , theta_21_2c , theta_31_2c, theta_41_2 , theta_51_2]
+    #th123[3,:] = [theta_12 , theta_22_2c , theta_32_2c, theta_41_2 , theta_51_2]
     
-    R03 = np.zeros([3,3])
+    #R03 = np.zeros([3,3])
     
-    for elem in th123:
-        R03
+    #for elem in th123:
+        #R03
 
     # allotted space for calculating theta_4 and theta_5... rip haha
 
-    theta_41 = 0
-    theta_42 = 0
-    theta_51 = 0
-    theta_52 = 0
+    #theta_41 = 0
+    #theta_42 = 0
+    #theta_51 = 0
+    #theta_52 = 0
     
-    theta_41_2 = 0
-    theta_42_2 = 0
-    theta_51_2 = 0
-    theta_52_2 = 0
+    #theta_41_2 = 0
+    #theta_42_2 = 0
+    #theta_51_2 = 0
+    #theta_52_2 = 0
+
+    # NOTE: NEW APPROACH FOR FINDING THETA_4 AND THETA_4 --> fix the EE to be pointing down, which lets us find theta_4.
+    # Assume (until block detection is implemented) that the blocks edges are parallel to the grid. Thus when the end effector is pointing
+    # down, theta_5 = -theta_1 to keep the end effector prongs aligned with the grid.
+
+    psi = 90 # [degrees]
+
+    alpha_1 = theta_21c - theta_31c
+    alpha_2 = theta_22c - theta_32c
+    alpha_3 = theta_21_2c - theta_31_2c
+    alpha_4 = thet_22_2c - theta_32_2c
+
+    theta_41 = alpha_1 + psi
+    theta_42 = alpha_2 + psi
+    theta_41_2 = alpha_3 + psi
+    theta_42_2 = alpha_4 + psi
+
+    theta_51 = -theta_11
+    theta_52 = -theta_11
+    theta_51_2 = -theta_12
+    theta_52_2 = -theta_12
 
     soln[0,:] = [theta_11 , theta_21c , theta_31c, theta_41 , theta_51]
     soln[1,:] = [theta_11 , theta_22c , theta_32c, theta_42 , theta_52]
     soln[2,:] = [theta_12 , theta_21_2c , theta_31_2c, theta_41_2 , theta_51_2]
-    soln[3,:] = [theta_12 , theta_22_2c , theta_32_2c, theta_41_2 , theta_51_2]
+    soln[3,:] = [theta_12 , theta_22_2c , theta_32_2c, theta_42_2 , theta_52_2]
 
     return soln

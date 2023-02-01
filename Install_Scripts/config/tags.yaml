@@ -20,8 +20,7 @@
      {id: 4, size: .025, name: LR},
      {id: 5, size: .025, name: MR},
      {id: 6, size: .025, name: ML},
-     {id: 7, size: .025, name: MM},
-     {id: 8, size: .025, name: BLC}
+     {id: 7, size: .025, name: MM}
    ]
 # ## Tag bundle definitions
 # ### Remarks

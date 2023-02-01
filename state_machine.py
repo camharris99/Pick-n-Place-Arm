@@ -193,6 +193,7 @@ class StateMachine():
                                  image_points,
                                  K,
                                  distCoeffs,
+                                 useExtrinsicGuess = False,
                                  flags=cv2.SOLVEPNP_ITERATIVE)
         R, _ = cv2.Rodrigues(R_exp)
         return np.row_stack((np.column_stack((R, t)), (0, 0, 0, 1)))
@@ -208,10 +209,10 @@ class StateMachine():
 
         """TODO Perform camera calibration routine here"""
         
-        self.tags_uvd = np.zeros((8,3))
+        self.tags_uvd = np.zeros((7,3))
         
         # using april tag locations
-        tags = np.zeros((8,3))
+        tags = np.zeros((7,3))
         #print(tags)
         for detection in self.camera.tag_detections.detections:
             # extracting xyz coordinates from the apriltag data packet --> this data is X_c,Y_c,Z_c
@@ -248,9 +249,12 @@ class StateMachine():
                       
         Kinv = np.linalg.inv(K)
 
+        # points_world = np.array([[-250, -25, 0], [250,-25,0],[250,275,0],
+        #                        [-250,275,0],[475,-100,154],[-375,400,242],
+        #                        [75,200,61], [-475,-50,154]])
         points_world = np.array([[-250, -25, 0], [250,-25,0],[250,275,0],
-                               [-250,275,0],[475,-100,154],[-375,400,242],
-                               [75,200,61], [-475,-150,92]])
+                               [-250,275,0],[475,-100,154],[-375,400,154],
+                               [-475,-50,242]])
         #calculating the u, v, 1 pixel coordinate representation, structure is n x 3 matrix!!
         uvd_coords = np.transpose(np.matmul(K, np.transpose(self.tags_uvd)))
         #print(uvd_coords)

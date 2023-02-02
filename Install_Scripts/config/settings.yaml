@@ -6,6 +6,7 @@ tag_threads:       4          # default: 2
 tag_decimate:      2.0        # default: 1.0
 tag_blur:          0.0        # default: 0.0
 tag_refine_edges:  1          # default: 1
+tag_refine_pose:   1
 tag_debug:         0          # default: 0
 # Other parameters
 publish_tf:        true       # default: false

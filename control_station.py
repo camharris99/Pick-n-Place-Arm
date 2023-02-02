@@ -293,7 +293,7 @@ class Gui(QMainWindow):
         next = next_pose
         curr = self.rxarm.get_positions()
         diff = next - curr
-        weighted = np.multiply(diff,np.array([4,4,2,1.5,1.5]))
+        weighted = np.multiply(diff,np.array([3.75,4,2,1.5,1.5]))
         norm = np.linalg.norm(weighted, ord=2)
         return norm/4
 
@@ -315,10 +315,14 @@ class Gui(QMainWindow):
         # right click!    
         elif mouse_event.button() == 2:
             # setting x,y,z position
+
+            
+
             pose[0:3,0] = np.reshape( self.MouseXYZ , (3,))
-            # setting phi, theta, psi values -- keeping as zero for now b/c this shit no work!
-            # no change to pose because these values are already zero
-            # now we should call the inverse kinematics function to return the joint angles to reach the desired mouse position
+            #print(R2D*kinematics.IK_geometric(pose))
+            # # setting phi, theta, psi values -- keeping as zero for now b/c this shit no work!
+            # # no change to pose because these values are already zero
+            # # now we should call the inverse kinematics function to return the joint angles to reach the desired mouse position
             
             if self.GripFlag == True: # i.e. gripper is closed
 
@@ -334,6 +338,7 @@ class Gui(QMainWindow):
                 move = self.changeMoveSpeed(self.cobra)
                 self.rxarm.set_moving_time(move)
                 self.rxarm.set_accel_time(move/4)
+                
                 self.rxarm.set_positions(self.cobra)
 
             else:       # i.e. gripper is closed
@@ -349,6 +354,7 @@ class Gui(QMainWindow):
                 self.GripFlag = True
 
                 move = self.changeMoveSpeed(self.cobra)
+                #print(move)
                 self.rxarm.set_moving_time(move)
                 self.rxarm.set_accel_time(move/4)
                 self.rxarm.set_positions(self.cobra)
@@ -357,7 +363,7 @@ class Gui(QMainWindow):
             # move = self.changeMoveSpeed(solns[1,:])
             # self.rxarm.set_moving_time(move)
             # self.rxarm.set_accel_time(move/4)
-            # solns[1,0] -= 2 * D2R should account for this
+            # solns[1,0] -= 2 * D2R #should account for this
             # self.rxarm.set_positions(solns[1,:])
         self.camera.last_click[0] = pt.x()
         self.camera.last_click[1] = pt.y()

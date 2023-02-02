@@ -11,6 +11,8 @@ from scipy.linalg import expm
 import math
 import rospy
 
+D2R = np.pi / 180.0
+R2D = 180.0 / np.pi
 
 def clamp(angle):
     """!
@@ -196,10 +198,24 @@ def IK_geometric(pose):
 
     # now calculating theta 3 , which will subsequently be used to calculate theta 2
 
-        # note use -r when finding the theta 3 and theta 2 values with the second theta 1 solution
-    
-    r = math.sqrt( x_c**2 + y_c**2 )
-    s = z_c - d_1 + 190
+    r_des = math.sqrt( x_c**2 + y_c**2 )
+    s_des = z_c - d_1 + 190
+
+    # if the hypotenuse of the desired wrist location with the vertical end effector is greater than l_2 + l_3 ( max arm length)
+    if math.sqrt(r_des**2 + s_des**2) >= ( l_2 + l_3):
+        print("outside reachable space")
+        psi = 0 #[rad]
+
+        r = math.sqrt( x_c**2 + y_c**2 ) - 190
+        s = z_c - d_1
+
+    else: # the hypotenuse of the desired wrist location is within l_2 + l_3
+        print("inside reachable worksapce")
+        psi = math.pi/2 # [rad]
+
+        r = math.sqrt( x_c**2 + y_c**2 )
+        s = z_c - d_1 + 190
+
     # theta 3 calculation --> there are two solutions (elbow up and elbow down)
     # this is for the "normal" theta 1 configuration
     theta_31 = math.acos( ( ( r**2 + s**2) - l_2**2 - l_3**2 ) / ( 2*l_2*l_3 ) )
@@ -224,7 +240,7 @@ def IK_geometric(pose):
     theta_21c = math.pi/2 - math.atan2(d_2,l_3) - theta_21
     theta_22c = math.pi/2 - math.atan2(d_2,l_3) - theta_22
     
-    # section solution correction (theta1 = atan2(xc,yc) + pi.2)
+    # second solution correction (theta1 = atan2(xc,yc) + pi.2)
     theta_31_2c =  theta_31_2 + math.pi/2 - math.atan2(d_2,l_3)
     theta_32_2c = theta_32_2 + math.pi/2 - math.atan2(d_2,l_3)
     theta_21_2c = math.pi/2 - math.atan2(d_2,l_3) - theta_21_2
@@ -260,22 +276,41 @@ def IK_geometric(pose):
     # Assume (until block detection is implemented) that the blocks edges are parallel to the grid. Thus when the end effector is pointing
     # down, theta_5 = -theta_1 to keep the end effector prongs aligned with the grid.
 
-    psi = math.pi/2 # [degrees]
+    if psi == 0:
 
-    alpha_1 = -math.pi + theta_21c - theta_31c
-    alpha_2 = -math.pi + theta_22c - theta_32c
-    alpha_3 = -math.pi + theta_21_2c - theta_31_2c
-    alpha_4 = -math.pi + theta_22_2c - theta_32_2c
+        alpha_1 = theta_21c - theta_31c
+        alpha_2 = theta_22c - theta_32c
+        alpha_3 = theta_21_2c - theta_31_2c
+        alpha_4 = theta_22_2c - theta_32_2c
+
+        theta_51 = 0
+        theta_52 = 0
+        theta_51_2 = 0
+        theta_52_2 = 0
+
+        theta_21c -= 5*D2R
+        theta_22c -= 5*D2R
+        theta_21_2c -= 5*D2R
+        theta_22_2c -= 5*D2R
+    
+    elif psi == math.pi/2:
+
+        alpha_1 = -math.pi + theta_21c - theta_31c
+        alpha_2 = -math.pi + theta_22c - theta_32c
+        alpha_3 = -math.pi + theta_21_2c - theta_31_2c
+        alpha_4 = -math.pi + theta_22_2c - theta_32_2c
+
+        theta_51 = theta_11
+        theta_52 = theta_11
+        theta_51_2 = theta_12
+        theta_52_2 = theta_12
 
     theta_41 = alpha_1 + psi
     theta_42 = alpha_2 + psi
     theta_41_2 = alpha_3 + psi
     theta_42_2 = alpha_4 + psi
 
-    theta_51 = theta_11
-    theta_52 = theta_11
-    theta_51_2 = theta_12
-    theta_52_2 = theta_12
+    
 
     soln[0,:] = [theta_11 , theta_21c , theta_31c, theta_41 , theta_51]
     soln[1,:] = [theta_11 , theta_22c , theta_32c, theta_42 , theta_52]

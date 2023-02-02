@@ -254,7 +254,7 @@ class StateMachine():
         #                        [75,200,61], [-475,-50,154]])
         points_world = np.array([[-250, -25, 0], [250,-25,0],[250,275,0],
                                [-250,275,0],[475,-100,154],[-375,400,154],
-                               [-475,-50,242]])
+                               [-475,-5 0,242]])
         #calculating the u, v, 1 pixel coordinate representation, structure is n x 3 matrix!!
         uvd_coords = np.transpose(np.matmul(K, np.transpose(self.tags_uvd)))
         #print(uvd_coords)

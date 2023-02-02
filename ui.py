@@ -333,7 +333,7 @@ class Ui_MainWindow(object):
         self.horizontalLayout_2.addWidget(self.radioUsr2)
         self.radioUsr3 = QtGui.QRadioButton(self.centralwidget)
         self.radioUsr3.setObjectName(_fromUtf8("radioUsr3"))
-        self.horizontalLayout_3.addWidget(self.radioUsr3)
+        self.horizontalLayout_2.addWidget(self.radioUsr3)
         spacerItem3 = QtGui.QSpacerItem(40, 20, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)
         self.horizontalLayout_2.addItem(spacerItem3)
         self.PixelCoordLabel = QtGui.QLabel(self.centralwidget)

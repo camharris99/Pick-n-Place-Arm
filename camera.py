@@ -27,6 +27,7 @@ class Camera():
         """
         self.VideoFrame = np.zeros((720, 1280, 3)).astype(np.uint8)
         self.GridFrame = np.zeros((720, 1280, 3)).astype(np.uint8)
+        self.ContourFrame = np.zeros((720, 1280, 3)).astype(np.uint8)
         self.TagImageFrame = np.zeros((720, 1280, 3)).astype(np.uint8)
         self.DepthFrameRaw = np.zeros((720, 1280)).astype(np.uint16)
         """ Extra arrays for colormaping the depth image"""
@@ -161,6 +162,25 @@ class Camera():
             return img
         except:
             return None
+        
+    def convertQtContourFrame(self):
+        """!
+        @brief      Converts frame to format suitable for Qt
+
+        @return     QImage
+        """
+
+        try:
+            frame = cv2.resize(self.ContourFrame, (1280, 720))
+            if (self.homography.size !=0):
+                #print("Applying warp")
+                frame = cv2.warpPerspective(frame,self.homography,(frame.shape[1], frame.shape[0]))
+
+            img = QImage(frame, frame.shape[1], frame.shape[0],
+                         QImage.Format_RGB888)
+            return img
+        except:
+            return None
 
 
     def convertQtDepthFrame(self):
@@ -219,6 +239,47 @@ class Camera():
         """
         pass
 
+    def mask_and_contour(self, image, color):
+        copy = image.copy()
+        if (color == "red"):
+            mask1 = cv2.inRange(copy, (174,50,50), (182, 255, 255))
+            mask2 = cv2.inRange(copy, (0,50,50), (3, 255, 255))
+            mask = mask1 + mask2
+            contour_color = (175,255,255)
+        elif (color == "orange"):
+            mask = cv2.inRange(copy, (4,140,149), (12, 246, 218))
+            contour_color = (8,250,250)
+        elif (color == "yellow"):
+            mask = cv2.inRange(copy, (20,135,160), (27, 255, 255))
+            contour_color = (23,200,250)
+        elif (color == "green"):
+            mask = cv2.inRange(copy, (60,50,70), (90, 255, 255))
+            contour_color = (75,255,255)
+        elif (color == "blue"):
+            mask = cv2.inRange(copy, (100,100,90), (107, 255, 255))
+            contour_color = (102,255,255)
+        elif (color == "purple"):
+            mask = cv2.inRange(copy, (109,43,56), (135, 255, 255))
+            contour_color = (115,120,255)
+
+        # print(np.shape(copy))
+        # print(np.shape(mask))
+        copy[np.where(mask==0)] = [0,0,0]
+        # print(np.shape(copy))
+        copy = cv2.medianBlur(copy,3)
+        copy = cv2.morphologyEx(copy, cv2.MORPH_OPEN, np.ones((7,7),np.uint8))
+        copy = cv2.morphologyEx(copy, cv2.MORPH_CLOSE, np.ones((7,7),np.uint8))
+
+        _, copy = cv2.threshold(copy, 70,255, cv2.THRESH_BINARY)
+        gray_copy = cv2.cvtColor(copy, cv2.COLOR_HSV2RGB)
+        gray_copy = cv2.cvtColor(gray_copy, cv2.COLOR_RGB2GRAY)
+        _, contours, _ = cv2.findContours(gray_copy, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+        for i in range(len(contours)):
+            cv2.drawContours(image, contours, i, contour_color, 3)
+
+        return image
+
     def blockDetector(self):
         """!
         @brief      Detect blocks from rgb
@@ -226,6 +287,14 @@ class Camera():
                     TODO: Implement your block detector here. You will need to locate blocks in 3D space and put their XYZ
                     locations in self.block_detections
         """
+        img_hsv = cv2.cvtColor(self.VideoFrame.copy(), cv2.COLOR_RGB2HSV)
+        contoured_image = self.mask_and_contour(img_hsv, "red")
+        contoured_image = self.mask_and_contour(img_hsv, "green")
+        contoured_image = self.mask_and_contour(img_hsv, "blue")
+        contoured_image = self.mask_and_contour(img_hsv, "purple")
+        contoured_image = self.mask_and_contour(img_hsv, "yellow")
+        contoured_image = self.mask_and_contour(img_hsv, "orange")
+        self.ContourFrame = cv2.cvtColor(contoured_image, cv2.COLOR_HSV2RGB)
         pass
 
     def detectBlocksInDepthImage(self):
@@ -374,7 +443,7 @@ class DepthListener:
 
 
 class VideoThread(QThread):
-    updateFrame = pyqtSignal(QImage, QImage, QImage, QImage)
+    updateFrame = pyqtSignal(QImage, QImage, QImage, QImage, QImage)
 
     def __init__(self, camera, parent=None):
         QThread.__init__(self, parent=parent)
@@ -398,16 +467,19 @@ class VideoThread(QThread):
             cv2.namedWindow("Depth window", cv2.WINDOW_NORMAL)
             cv2.namedWindow("Tag window", cv2.WINDOW_NORMAL)
             cv2.namedWindow("Grid window", cv2.WINDOW_NORMAL)
+            cv2.namedWindow("Contour window", cv2.WINDOW_NORMAL)
             time.sleep(0.5)
         while True:
             rgb_frame = self.camera.convertQtVideoFrame()
             depth_frame = self.camera.convertQtDepthFrame()
             tag_frame = self.camera.convertQtTagImageFrame()
             self.camera.projectGridInRGBImage()
+            self.camera.blockDetector()
             grid_frame = self.camera.convertQtGridFrame()
+            contour_frame = self.camera.convertQtContourFrame()
 
             if ((rgb_frame != None) & (depth_frame != None)):
-                self.updateFrame.emit(rgb_frame, depth_frame, tag_frame, grid_frame)
+                self.updateFrame.emit(rgb_frame, depth_frame, tag_frame, grid_frame, contour_frame)
             time.sleep(0.03)
             if __name__ == '__main__':
                 cv2.imshow(

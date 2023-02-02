@@ -115,7 +115,7 @@ def get_moments(output, contours):
 
 def color_seg(img):
 
-    img = cv2.imread("test\my_all_blocks.png")
+    img = cv2.imread("test\blue_testing.png")
 
     # sliders(img)
 
@@ -133,9 +133,9 @@ def main():
     img_color = cv2.imread("test\my_all_blocks.png")
     img_depth = cv2.imdecode
 
-    # sliders(img_color)
+    sliders(img_color)
 
-    color_seg(img_color)
+    # color_seg(img_color)
 
 if __name__ == "__main__":
     main()

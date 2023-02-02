@@ -18,6 +18,7 @@ from PyQt4.QtGui import (QPixmap, QImage, QApplication, QWidget, QLabel,
                          QMainWindow, QCursor, QFileDialog)
 
 from ui import Ui_MainWindow
+import kinematics
 from rxarm import RXArm, RXArmThread
 from camera import Camera, VideoThread
 from state_machine import StateMachine, StateMachineThread
@@ -37,6 +38,8 @@ class Gui(QMainWindow):
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
         self.MouseXYZ = np.zeros([3,1])
+        self.GripFlag = True
+        self.cobra = D2R*np.array([0., -8., 14.33, -63.81, 0.])
         """ Groups of ui commonents """
         self.joint_readouts = [
             self.ui.rdoutBaseJC,
@@ -59,6 +62,15 @@ class Gui(QMainWindow):
             self.ui.sldrWristA,
             self.ui.sldrWristR,
         ]
+        """!
+        @brief      Gets the user input to perform the calibration
+        """
+        self.current_state = "calibrate"
+        self.next_state = "idle"
+
+        """TODO Perform camera calibration routine here"""
+        self.status_message = "Calibration - Completed Calibration"
+
         """Objects Using Other Classes"""
         self.camera = Camera()
         print("Creating rx arm...")
@@ -267,9 +279,23 @@ class Gui(QMainWindow):
             H_inv =  extrinsic
          
             world_coords = np.matmul(H_inv, np.append(cam_coords,1))
-            self.MouseXYZ[:,0] = np.array( [ [world_coords[0]], [world_coords[1]], [world_coords[2]] ] )
+            self.MouseXYZ[:,0] = np.reshape( np.array( [world_coords[0], world_coords[1], world_coords[2]] ), (3,) )
             #print(np.append(cam_coords,1    ))
             self.ui.rdoutMouseWorld.setText( "(%.0f, %.0f, %.0f)" % (world_coords[0], world_coords[1], world_coords[2]))
+
+
+    def changeMoveSpeed(self, next_pose):
+        """!
+        @brief change speed of robot arm movement
+
+        """
+        
+        next = next_pose
+        curr = self.rxarm.get_positions()
+        diff = next - curr
+        weighted = np.multiply(diff,np.array([4,4,2,1.5,1.5]))
+        norm = np.linalg.norm(weighted, ord=2)
+        return norm/4
 
     def calibrateMousePress(self, mouse_event):
         """!
@@ -289,12 +315,50 @@ class Gui(QMainWindow):
         # right click!    
         elif mouse_event.button() == 2:
             # setting x,y,z position
-            pose[0:2,0] = self.MouseXYZ
+            pose[0:3,0] = np.reshape( self.MouseXYZ , (3,))
             # setting phi, theta, psi values -- keeping as zero for now b/c this shit no work!
             # no change to pose because these values are already zero
             # now we should call the inverse kinematics function to return the joint angles to reach the desired mouse position
-            self.kinematics.IK_geometric(pose)
+            
+            if self.GripFlag == True: # i.e. gripper is closed
 
+                solns = kinematics.IK_geometric(pose)
+                move = self.changeMoveSpeed(solns[1,:])
+                self.rxarm.set_moving_time(move)
+                self.rxarm.set_accel_time(move/4)
+                self.rxarm.set_positions(solns[1,:])
+                rospy.sleep(1.5)
+                self.rxarm.close_gripper()
+                self.GripFlag = False
+
+                move = self.changeMoveSpeed(self.cobra)
+                self.rxarm.set_moving_time(move)
+                self.rxarm.set_accel_time(move/4)
+                self.rxarm.set_positions(self.cobra)
+
+            else:       # i.e. gripper is closed
+            
+                pose[2,0] += 40
+                solns = kinematics.IK_geometric(pose)
+                move = self.changeMoveSpeed(solns[1,:])
+                self.rxarm.set_moving_time(move)
+                self.rxarm.set_accel_time(move/4)
+                self.rxarm.set_positions(solns[1,:])
+                rospy.sleep(1.5)
+                self.rxarm.open_gripper()
+                self.GripFlag = True
+
+                move = self.changeMoveSpeed(self.cobra)
+                self.rxarm.set_moving_time(move)
+                self.rxarm.set_accel_time(move/4)
+                self.rxarm.set_positions(self.cobra)
+
+
+            # move = self.changeMoveSpeed(solns[1,:])
+            # self.rxarm.set_moving_time(move)
+            # self.rxarm.set_accel_time(move/4)
+            # solns[1,0] -= 2 * D2R should account for this
+            # self.rxarm.set_positions(solns[1,:])
         self.camera.last_click[0] = pt.x()
         self.camera.last_click[1] = pt.y()
         self.camera.new_click = True

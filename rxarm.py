@@ -140,6 +140,7 @@ class RXArm(InterbotixRobot):
 
          @param      joint_angles  The joint angles
          """
+        joint_positions[0] += 2*D2R
         self.set_joint_positions(joint_positions,
                                  moving_time=self.moving_time,
                                  accel_time=self.accel_time,

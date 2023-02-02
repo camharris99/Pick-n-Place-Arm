@@ -77,7 +77,7 @@ def main():
 
     img = cv2.imread("test\my_all_blocks.png")
 
-    # sliders(img)
+    # sliders(imgitg)
 
     # sharpen = np.array([[0,-1,0], [-1,5,-1], [0,-1,0]])
     # img = cv2.filter2D(src=img, ddepth=-1, kernel=sharpen)
@@ -94,8 +94,9 @@ def main():
     mask = mask_red + mask_yellow + mask_green + mask_orange + mask_blue + mask_purple
     output = img.copy()
     output[np.where(mask==0)] = 0
-    output = cv2.medianBlur(output,3)
-    output = cv2.morphologyEx(output, cv2.MORPH_CLOSE, np.ones((9,9),np.uint8))
+    # output = cv2.medianBlur(output,3)
+    output = cv2.morphologyEx(output, cv2.MORPH_OPEN, np.ones((7,7),np.uint8))
+    output = cv2.morphologyEx(output, cv2.MORPH_CLOSE, np.ones((7,7),np.uint8))
 
     cv2.imshow("image", output)
     cv2.waitKey(0)

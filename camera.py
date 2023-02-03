@@ -279,11 +279,15 @@ class Camera():
         for i in range(len(contours)):
             # cv2.drawContours(image, contours, i, contour_color, 3)
             moments.append(cv2.moments(contours[i]))
-            cv2.circle(image, (int(moments[i]['m10']/moments[i]['m00']),int(moments[i]['m01']/moments[i]['m00'])), radius = 5, color=(0,0,0), thickness=-1) 
+            x = int(moments[i]['m10']/moments[i]['m00'])
+            y = int(moments[i]['m01']/moments[i]['m00'])
+            cv2.circle(image, (x,y), radius = 5, color=(0,0,0), thickness=-1) 
             rect = cv2.minAreaRect(contours[i])
             box = cv2.boxPoints(rect)
             box = np.intp(box)
             cv2.drawContours(image,[box],0,contour_color,2)
+            cv2.putText(image, str(cv2.contourArea(contours[i])), (box[2,0],box[2,1]), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (36,255,12), 2)
+            cv2.putText(image, str(round(rect[2],2)), (box[0,0],box[0,1]), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (36,255,12), 2)
 
         return image, moments, contours
 

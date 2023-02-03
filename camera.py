@@ -242,12 +242,12 @@ class Camera():
     def mask_and_contour(self, image, color):
         copy = image.copy()
         if (color == "red"):
-            mask1 = cv2.inRange(copy, (174,50,50), (182, 255, 255))
-            mask2 = cv2.inRange(copy, (0,50,50), (3, 255, 255))
+            mask1 = cv2.inRange(copy, (174,100,100), (182, 255, 255))
+            mask2 = cv2.inRange(copy, (0,100,100), (3, 255, 255))
             mask = mask1 + mask2
             contour_color = (175,255,255)
         elif (color == "orange"):
-            mask = cv2.inRange(copy, (4,140,149), (12, 246, 218))
+            mask = cv2.inRange(copy, (3,124,154), (15, 255, 255))
             contour_color = (8,250,250)
         elif (color == "yellow"):
             mask = cv2.inRange(copy, (20,135,160), (27, 255, 255))
@@ -256,7 +256,7 @@ class Camera():
             mask = cv2.inRange(copy, (60,50,70), (90, 255, 255))
             contour_color = (75,255,255)
         elif (color == "blue"):
-            mask = cv2.inRange(copy, (96,157,100), (107, 255, 255))
+            mask = cv2.inRange(copy, (93,207,109), (108, 255, 255))
             contour_color = (102,255,255)
         elif (color == "purple"):
             mask = cv2.inRange(copy, (109,43,56), (135, 255, 255))
@@ -275,10 +275,17 @@ class Camera():
         gray_copy = cv2.cvtColor(gray_copy, cv2.COLOR_RGB2GRAY)
         _, contours, _ = cv2.findContours(gray_copy, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
+        moments = []
         for i in range(len(contours)):
-            cv2.drawContours(image, contours, i, contour_color, 3)
+            # cv2.drawContours(image, contours, i, contour_color, 3)
+            moments.append(cv2.moments(contours[i]))
+            cv2.circle(image, (int(moments[i]['m10']/moments[i]['m00']),int(moments[i]['m01']/moments[i]['m00'])), radius = 5, color=(0,0,0), thickness=-1) 
+            rect = cv2.minAreaRect(contours[i])
+            box = cv2.boxPoints(rect)
+            box = np.intp(box)
+            cv2.drawContours(image,[box],0,contour_color,2)
 
-        return image
+        return image, moments, contours
 
     def blockDetector(self):
         """!
@@ -288,12 +295,12 @@ class Camera():
                     locations in self.block_detections
         """
         img_hsv = cv2.cvtColor(self.VideoFrame.copy(), cv2.COLOR_RGB2HSV)
-        contoured_image = self.mask_and_contour(img_hsv, "red")
-        contoured_image = self.mask_and_contour(img_hsv, "green")
-        contoured_image = self.mask_and_contour(img_hsv, "blue")
-        contoured_image = self.mask_and_contour(img_hsv, "purple")
-        contoured_image = self.mask_and_contour(img_hsv, "yellow")
-        contoured_image = self.mask_and_contour(img_hsv, "orange")
+        contoured_image, red_moments, red_contours = self.mask_and_contour(img_hsv, "red")
+        contoured_image, green_moments, green_contours = self.mask_and_contour(img_hsv, "green")
+        contoured_image, blue_moments, blue_contours = self.mask_and_contour(img_hsv, "blue")
+        contoured_image, purple_moments, purple_contours = self.mask_and_contour(img_hsv, "purple")
+        contoured_image, yellow_moments, yellow_contours = self.mask_and_contour(img_hsv, "yellow")
+        contoured_image, orange_moments, orange_contours = self.mask_and_contour(img_hsv, "orange")
         self.ContourFrame = cv2.cvtColor(contoured_image, cv2.COLOR_HSV2RGB)
         pass
 

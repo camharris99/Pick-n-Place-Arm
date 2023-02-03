@@ -166,13 +166,13 @@ def to_s_matrix(w, v):
     pass
 
 
-def IK_geometric(pose):
+def IK_geometric(psi, pose):
     """!
     @brief      Get all possible joint configs that produce the pose.
 
                 TODO: Convert a desired end-effector pose vector as np.array to joint angles
 
-    @param      dh_params  The dh parameters
+    @param      psi  end effector rotation from horizontal -- either specify nan or a value on input
     @param      pose       The desired pose vector as np.array 
 
     @return     All four possible joint configurations in a numpy array 4x4 where each row is one possible joint
@@ -200,21 +200,36 @@ def IK_geometric(pose):
 
     r_des = math.sqrt( x_c**2 + y_c**2 )
     s_des = z_c - d_1 + 190
+    #print(psi)
+    if psi == math.pi/4:
+            # if the hypotenuse of the desired wrist location with the vertical end effector is greater than l_2 + l_3 ( max arm length)
+        print("here")
+        if math.sqrt(r_des**2 + s_des**2) >= ( l_2 + l_3):
+            print("outside reachable space")
+            psi = 0 #[rad]
 
-    # if the hypotenuse of the desired wrist location with the vertical end effector is greater than l_2 + l_3 ( max arm length)
-    if math.sqrt(r_des**2 + s_des**2) >= ( l_2 + l_3):
-        print("outside reachable space")
-        psi = 0 #[rad]
+            r = math.sqrt( x_c**2 + y_c**2 ) - 190
+            s = z_c - d_1
 
-        r = math.sqrt( x_c**2 + y_c**2 ) - 190
-        s = z_c - d_1
+        else: # the hypotenuse of the desired wrist location is within l_2 + l_3
+            print("inside reachable worksapce")
+            psi = math.pi/2 # [rad]
 
-    else: # the hypotenuse of the desired wrist location is within l_2 + l_3
-        print("inside reachable worksapce")
-        psi = math.pi/2 # [rad]
+            r = math.sqrt( x_c**2 + y_c**2 )
+            s = z_c - d_1 + 190
+    
+    else:
+        if psi == 0:
+            print("outside reachable space")
 
-        r = math.sqrt( x_c**2 + y_c**2 )
-        s = z_c - d_1 + 190
+            r = math.sqrt( x_c**2 + y_c**2 ) - 190
+            s = z_c - d_1
+
+        elif psi == math.pi/2: # the hypotenuse of the desired wrist location is within l_2 + l_3
+            print("inside reachable worksapce")
+
+            r = math.sqrt( x_c**2 + y_c**2 )
+            s = z_c - d_1 + 190
 
     # theta 3 calculation --> there are two solutions (elbow up and elbow down)
     # this is for the "normal" theta 1 configuration
@@ -317,4 +332,9 @@ def IK_geometric(pose):
     soln[2,:] = [theta_12 , theta_21_2c , theta_31_2c, theta_41_2 , theta_51_2]
     soln[3,:] = [theta_12 , theta_22_2c , theta_32_2c, theta_42_2 , theta_52_2]
 
-    return soln
+    if x_c < 0 and y_c < 0:
+        soln[1,0] += 2*math.pi
+
+    #print(R2D*soln[1,:])
+    
+    return soln, psi

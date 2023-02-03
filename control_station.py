@@ -8,6 +8,7 @@ script_path = os.path.dirname(os.path.realpath(__file__))
 import argparse
 import sys
 import cv2
+import math
 import numpy as np
 import rospy
 import time
@@ -321,14 +322,29 @@ class Gui(QMainWindow):
             
 
             pose[0:3,0] = np.reshape( self.MouseXYZ , (3,))
-            #print(R2D*kinematics.IK_geometric(pose))
+            #print(kinematics.IK_geometric(math.pi/4, pose))
             # # setting phi, theta, psi values -- keeping as zero for now b/c this shit no work!
             # # no change to pose because these values are already zero
             # # now we should call the inverse kinematics function to return the joint angles to reach the desired mouse position
             
-            if self.GripFlag == True: # i.e. gripper is closed
+            if self.GripFlag == True: # i.e. gripper is open
 
-                solns = kinematics.IK_geometric(pose)
+                leave_pose = np.copy(pose)
+                leave_pose[0,0] *= 0.9
+                leave_pose[1,0] *= 0.9
+                leave_pose[2,0] += 75 # [mm]
+
+                pre_pose = np.copy(pose)
+                pre_pose[2,0] += 60 # [mm]
+
+                presoln, prepsi = kinematics.IK_geometric(math.pi/4, pre_pose)
+                move = self.changeMoveSpeed(presoln[1,:])
+                self.rxarm.set_moving_time(move)
+                self.rxarm.set_accel_time(move/4)
+                self.rxarm.set_positions(presoln[1,:])
+                rospy.sleep(2)
+
+                solns, solnpsi = kinematics.IK_geometric(prepsi, pose)
                 move = self.changeMoveSpeed(solns[1,:])
                 self.rxarm.set_moving_time(move)
                 self.rxarm.set_accel_time(move/4)
@@ -336,6 +352,15 @@ class Gui(QMainWindow):
                 rospy.sleep(1.5)
                 self.rxarm.close_gripper()
                 self.GripFlag = False
+
+                # pre leaving pose --> back up and lift a bit
+                lsoln, leavepsi = kinematics.IK_geometric(solnpsi, leave_pose)
+
+                move = self.changeMoveSpeed(lsoln[1,:])
+                self.rxarm.set_moving_time(move)
+                self.rxarm.set_accel_time(move/4)
+                self.rxarm.set_positions(lsoln[1,:])
+                rospy.sleep(1)
 
                 move = self.changeMoveSpeed(self.cobra)
                 self.rxarm.set_moving_time(move)
@@ -345,15 +370,39 @@ class Gui(QMainWindow):
 
             else:       # i.e. gripper is closed
             
+                leave_pose = np.copy(pose)
+                leave_pose[0,0] *= 0.9
+                leave_pose[1,0] *= 0.9
+                leave_pose[2,0] += 75 # [mm]
+                
+                pre_pose = np.copy(pose)
+                pre_pose[2,0] += 60 # [mm]
+
+                presoln, prepsi = kinematics.IK_geometric(math.pi/4, pre_pose)
+                move = self.changeMoveSpeed(presoln[1,:])
+                self.rxarm.set_moving_time(move)
+                self.rxarm.set_accel_time(move/4)
+                self.rxarm.set_positions(presoln[1,:])
+                rospy.sleep(2)
+
                 pose[2,0] += 40
-                solns = kinematics.IK_geometric(pose)
+                solns, solnpsi = kinematics.IK_geometric(prepsi, pose)
                 move = self.changeMoveSpeed(solns[1,:])
                 self.rxarm.set_moving_time(move)
                 self.rxarm.set_accel_time(move/4)
                 self.rxarm.set_positions(solns[1,:])
-                rospy.sleep(1.5)
+                rospy.sleep(2.5)
                 self.rxarm.open_gripper()
                 self.GripFlag = True
+
+                # pre leaving pose --> back up and lift a bit
+                lsoln, leavepsi = kinematics.IK_geometric(solnpsi, leave_pose)
+
+                move = self.changeMoveSpeed(lsoln[1,:])
+                self.rxarm.set_moving_time(move)
+                self.rxarm.set_accel_time(move/4)
+                self.rxarm.set_positions(lsoln[1,:])
+                rospy.sleep(1)
 
                 move = self.changeMoveSpeed(self.cobra)
                 #print(move)
@@ -362,11 +411,11 @@ class Gui(QMainWindow):
                 self.rxarm.set_positions(self.cobra)
 
 
-            # move = self.changeMoveSpeed(solns[1,:])
-            # self.rxarm.set_moving_time(move)
-            # self.rxarm.set_accel_time(move/4)
-            # solns[1,0] -= 2 * D2R #should account for this
-            # self.rxarm.set_positions(solns[1,:])
+            #### move = self.changeMoveSpeed(solns[1,:])
+            #### self.rxarm.set_moving_time(move)
+            #### self.rxarm.set_accel_time(move/4)
+            #### solns[1,0] -= 2 * D2R #should account for this
+            #### self.rxarm.set_positions(solns[1,:])
         self.camera.last_click[0] = pt.x()
         self.camera.last_click[1] = pt.y()
         self.camera.new_click = True

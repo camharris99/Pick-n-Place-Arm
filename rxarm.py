@@ -258,6 +258,10 @@ class RXArmThread(QThread):
         """
         QThread.__init__(self, parent=parent)
         self.rxarm = rxarm
+        waist_pid = self.rxarm.get_joint_position_pid_params("waist")
+        waist_pid[-1] += 1500
+        # print(waist_pid)
+        self.rxarm.set_joint_position_pid_params("waist", waist_pid)
         rospy.Subscriber('/rx200/joint_states', JointState, self.callback)
         rospy.sleep(0.5)
 
@@ -267,8 +271,8 @@ class RXArmThread(QThread):
         self.rxarm.effort_fb = np.asarray(data.effort)[0:5]
         self.updateJointReadout.emit(self.rxarm.position_fb.tolist())
         self.updateEndEffectorReadout.emit(self.rxarm.get_ee_pose())
-        #for name in self.rxarm.joint_names:
-        #    print("{0} gains: {1}".format(name, self.rxarm.get_motor_pid_params(name)))
+        # for name in self.rxarm.joint_names:
+        #    print("{0} gains: {1}".format(name, self.rxarm.get_joint_position_pid_params(name)))
         if (__name__ == '__main__'):
             print(self.rxarm.position_fb)
 

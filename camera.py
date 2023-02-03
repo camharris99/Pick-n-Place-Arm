@@ -256,7 +256,7 @@ class Camera():
             mask = cv2.inRange(copy, (60,50,70), (90, 255, 255))
             contour_color = (75,255,255)
         elif (color == "blue"):
-            mask = cv2.inRange(copy, (100,100,90), (107, 255, 255))
+            mask = cv2.inRange(copy, (96,157,100), (107, 255, 255))
             contour_color = (102,255,255)
         elif (color == "purple"):
             mask = cv2.inRange(copy, (109,43,56), (135, 255, 255))

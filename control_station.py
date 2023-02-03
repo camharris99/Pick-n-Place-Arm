@@ -344,6 +344,11 @@ class Gui(QMainWindow):
                 self.rxarm.set_positions(presoln[1,:])
                 rospy.sleep(2)
 
+                if prepsi == 0:
+                    leave_pose[0,0] *= 1.1
+                    leave_pose[1,0] *= 1.1
+                    pose[2,0] -= 30 # [mm]
+
                 solns, solnpsi = kinematics.IK_geometric(prepsi, pose)
                 move = self.changeMoveSpeed(solns[1,:])
                 self.rxarm.set_moving_time(move)
@@ -385,7 +390,10 @@ class Gui(QMainWindow):
                 self.rxarm.set_positions(presoln[1,:])
                 rospy.sleep(2)
 
-                pose[2,0] += 30
+                if prepsi == math.pi/2:
+                    pose[2,0] += 30
+                else:
+                    pose[2,0] += 10
                 solns, solnpsi = kinematics.IK_geometric(prepsi, pose)
                 move = self.changeMoveSpeed(solns[1,:])
                 self.rxarm.set_moving_time(move)

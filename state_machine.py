@@ -508,6 +508,13 @@ class StateMachine():
                 print("starting movement")
                 self.moveBlock(elem[0:3])
                 rospy.sleep(0.5)
+                
+                # ADDING SOME STUFF TO POTENTIALLY IMPROVE AUTONOMY
+                # Get depth reading at the desired placement x-y position
+                # CHECK THE VALUE OF z BEFORE RUNNING AUTONOMY - MIGHT NEED TO SUBTRACT 1000
+                # z = self.camera.DepthFrameRaw[425][0]
+                #self.moveBlock(np.array([0,425,1000-z]))
+
                 self.moveBlock(np.array([0,425,0]))
         # end check to determine if the autonomy button is still pressed
         #if self.autoFlag == True:

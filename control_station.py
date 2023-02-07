@@ -126,6 +126,8 @@ class Gui(QMainWindow):
         self.ui.sldrAccelTime.valueChanged.connect(self.sliderChange)
         # Direct Control
         self.ui.chk_directcontrol.stateChanged.connect(self.directControlChk)
+        self.ui.chk_autonomy.stateChanged.connect(self.autoControlChk)
+
         # Status
         self.ui.rdoutStatus.setText("Waiting for input")
         """initalize manual control off"""
@@ -228,11 +230,35 @@ class Gui(QMainWindow):
             # Go to manual and enable sliders
             self.sm.set_next_state("manual")
             self.ui.SliderFrame.setEnabled(True)
+        
         else:
             # Lock sliders and go to idle
             self.sm.set_next_state("idle")
             self.ui.SliderFrame.setEnabled(False)
             self.ui.chk_directcontrol.setChecked(False)
+
+    def autoControlChk(self, state):
+        """!
+        @brief      Changes to autonomoy mode
+
+                    Will only work if the rxarm is initialized.
+
+        @param      state  State of the checkbox
+        """
+        
+        if state == Qt.Checked and self.rxarm.initialized:
+            # Enter autonomous mode
+            self.sm.set_next_state("autonomy")
+            self.sm.autoFlag = True
+            
+        elif self.rxarm.initialized == False:
+            print("initialize the arm, dumbass")
+
+        else:
+            # Exit autonomous mode
+            self.sm.set_next_state("idle")
+            self.ui.chk_autonomy.setChecked(False)
+            self.sm.autoFlag = False
 
     def trackMouse(self, mouse_event):
         """!
@@ -299,6 +325,7 @@ class Gui(QMainWindow):
         weighted = np.multiply(diff,np.array([3.75,4,2,1.5,1.5]))
         norm = np.linalg.norm(weighted, ord=2)
         return norm/4
+
 
     def calibrateMousePress(self, mouse_event):
         """!
@@ -435,6 +462,7 @@ class Gui(QMainWindow):
         """
         self.ui.SliderFrame.setEnabled(False)
         self.ui.chk_directcontrol.setChecked(False)
+        self.ui.chk_autonomy.setChecked(False)
         self.rxarm.enable_torque()
         self.sm.set_next_state('initialize_rxarm')
 

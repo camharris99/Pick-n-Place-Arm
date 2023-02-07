@@ -313,10 +313,17 @@ class Ui_MainWindow(object):
         self.verticalLayout_4.addLayout(self.horizontalLayout_12)
         self.horizontalLayout_2 = QtGui.QHBoxLayout()
         self.horizontalLayout_2.setObjectName(_fromUtf8("horizontalLayout_2"))
+        
         self.chk_directcontrol = QtGui.QCheckBox(self.centralwidget)
         self.chk_directcontrol.setChecked(False)
         self.chk_directcontrol.setObjectName(_fromUtf8("chk_directcontrol"))
         self.horizontalLayout_2.addWidget(self.chk_directcontrol)
+        
+        self.chk_autonomy = QtGui.QCheckBox(self.centralwidget)
+        self.chk_autonomy.setChecked(False)
+        self.chk_autonomy.setObjectName(_fromUtf8("chk_autonomy"))
+        self.horizontalLayout_2.addWidget(self.chk_autonomy)
+
         self.radioVideo = QtGui.QRadioButton(self.centralwidget)
         self.radioVideo.setChecked(True)
         self.radioVideo.setAutoExclusive(True)
@@ -672,6 +679,7 @@ class Ui_MainWindow(object):
         self.btnUser12.setText(_translate("MainWindow", "USER 12", None))
         self.videoDisplay.setText(_translate("MainWindow", "Video Display", None))
         self.chk_directcontrol.setText(_translate("MainWindow", "Direct Control", None))
+        self.chk_autonomy.setText(_translate("MainWindow", "Autonomy", None))
         self.radioVideo.setText(_translate("MainWindow", "Video", None))
         self.radioDepth.setText(_translate("MainWindow", "Depth", None))
         self.radioUsr1.setText(_translate("MainWindow", "User 1", None))

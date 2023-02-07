@@ -6,6 +6,12 @@ import time
 import numpy as np
 import rospy
 import cv2
+import kinematics
+import math
+
+D2R = np.pi / 180.0
+R2D = 180.0 / np.pi
+
 class StateMachine():
     """!
     @brief      This class describes a state machine.
@@ -21,6 +27,10 @@ class StateMachine():
         @param      planner  The planner
         @param      camera   The camera
         """
+        #self.MouseXYZ = np.zeros([3,1])
+        self.GripFlag = True
+        self.cobra = D2R*np.array([0., -8., 14.33, -63.81, 0.])
+        self.autoFlag = False
         self.rxarm = rxarm
         self.camera = camera
         self.status_message = "State: Idle"
@@ -95,6 +105,9 @@ class StateMachine():
 
         if self.next_state == "calibrate":
             self.calibrate()
+
+        if self.next_state == "autonomy":
+            self.autonomy()
 
 
     """Functions run for each state"""
@@ -198,7 +211,117 @@ class StateMachine():
         R, _ = cv2.Rodrigues(R_exp)
         return np.row_stack((np.column_stack((R, t)), (0, 0, 0, 1)))
 
+    def changeMoveSpeed(self, next_pose):
+        """!
+        @brief change speed of robot arm movement
 
+        """
+        
+        next = next_pose
+        curr = self.rxarm.get_positions()
+        diff = next - curr
+        weighted = np.multiply(diff,np.array([3.75,4,2,1.5,1.5]))
+        norm = np.linalg.norm(weighted, ord=2)
+        return norm/4
+
+    def moveBlock(self, input_pose):
+        pose = np.zeros([6,1])
+        pose[0:3,0] = np.reshape( input_pose , (3,))
+            #print(kinematics.IK_geometric(math.pi/4, pose))
+            # # setting phi, theta, psi values -- keeping as zero for now b/c this shit no work!
+            # # no change to pose because these values are already zero
+            # # now we should call the inverse kinematics function to return the joint angles to reach the desired mouse position
+            
+        if self.GripFlag == True: # i.e. gripper is open
+
+            leave_pose = np.copy(pose)
+            leave_pose[0,0] *= 0.9
+            leave_pose[1,0] *= 0.9
+            leave_pose[2,0] += 75 # [mm]
+
+            pre_pose = np.copy(pose)
+            pre_pose[2,0] += 60 # [mm]
+
+            presoln, prepsi = kinematics.IK_geometric(math.pi/4, pre_pose)
+            move = self.changeMoveSpeed(presoln[1,:])
+            self.rxarm.set_moving_time(move)
+            self.rxarm.set_accel_time(move/4)
+            self.rxarm.set_positions(presoln[1,:])
+            rospy.sleep(2)
+
+            if prepsi == 0:
+                leave_pose[0,0] *= 1.1
+                leave_pose[1,0] *= 1.1
+                pose[2,0] -= 30 # [mm]
+
+            solns, solnpsi = kinematics.IK_geometric(prepsi, pose)
+            move = self.changeMoveSpeed(solns[1,:])
+            self.rxarm.set_moving_time(move)
+            self.rxarm.set_accel_time(move/4)
+            self.rxarm.set_positions(solns[1,:])
+            rospy.sleep(1.5)
+            self.rxarm.close_gripper()
+            self.GripFlag = False
+
+            # pre leaving pose --> back up and lift a bit
+            lsoln, leavepsi = kinematics.IK_geometric(solnpsi, leave_pose)
+
+            move = self.changeMoveSpeed(lsoln[1,:])
+            self.rxarm.set_moving_time(move)
+            self.rxarm.set_accel_time(move/4)
+            self.rxarm.set_positions(lsoln[1,:])
+            rospy.sleep(1)
+
+            move = self.changeMoveSpeed(self.cobra)
+            self.rxarm.set_moving_time(move)
+            self.rxarm.set_accel_time(move/4)
+            
+            self.rxarm.set_positions(self.cobra)
+
+        else:       # i.e. gripper is closed
+        
+            leave_pose = np.copy(pose)
+            leave_pose[0,0] *= 0.9
+            leave_pose[1,0] *= 0.9
+            leave_pose[2,0] += 75 # [mm]
+            
+            pre_pose = np.copy(pose)
+            pre_pose[2,0] += 60 # [mm]
+
+            presoln, prepsi = kinematics.IK_geometric(math.pi/4, pre_pose)
+            move = self.changeMoveSpeed(presoln[1,:])
+            self.rxarm.set_moving_time(move)
+            self.rxarm.set_accel_time(move/4)
+            self.rxarm.set_positions(presoln[1,:])
+            rospy.sleep(2)
+
+            if prepsi == math.pi/2:
+                pose[2,0] += 30
+            else:
+                pose[2,0] += 10
+            solns, solnpsi = kinematics.IK_geometric(prepsi, pose)
+            move = self.changeMoveSpeed(solns[1,:])
+            self.rxarm.set_moving_time(move)
+            self.rxarm.set_accel_time(move/4)
+            self.rxarm.set_positions(solns[1,:])
+            rospy.sleep(2.5)
+            self.rxarm.open_gripper()
+            self.GripFlag = True
+
+            # pre leaving pose --> back up and lift a bit
+            lsoln, leavepsi = kinematics.IK_geometric(solnpsi, leave_pose)
+
+            move = self.changeMoveSpeed(lsoln[1,:])
+            self.rxarm.set_moving_time(move)
+            self.rxarm.set_accel_time(move/4)
+            self.rxarm.set_positions(lsoln[1,:])
+            rospy.sleep(1)
+
+            move = self.changeMoveSpeed(self.cobra)
+            #print(move)
+            self.rxarm.set_moving_time(move)
+            self.rxarm.set_accel_time(move/4)
+            self.rxarm.set_positions(self.cobra)
 
 
     def calibrate(self):
@@ -359,6 +482,38 @@ class StateMachine():
 
         #print(self.waypoints)
 
+    
+
+    def autonomy(self):
+        """!
+        @brief logic to implement autonomous functionality of arm
+        """
+        self.status_message = "State: Autonomy"
+        self.next_state = "idle"
+        
+        pre_block_coordsXYZ = self.camera.block_coords.copy()
+        #print(pre_block_coordsXYZ)
+        block_coordsXYZ = np.transpose(pre_block_coordsXYZ[:,1:-1])
+        print(block_coordsXYZ)
+        for elem in block_coordsXYZ:
+            #print(elem)
+            #print(" ")
+            x = elem[0]
+            y = elem[1]
+            z = elem[2]
+            if x < -450 or x > 450 or y < -150 or y > 450 or z < -5:
+                print("passed point")
+                pass
+            else:
+                print("starting movement")
+                self.moveBlock(elem[0:3])
+                rospy.sleep(0.5)
+                self.moveBlock(np.array([0,425,0]))
+        # end check to determine if the autonomy button is still pressed
+        #if self.autoFlag == True:
+        #    self.autonomy()
+        #else:
+        #    pass
    
 class StateMachineThread(QThread):
     """!

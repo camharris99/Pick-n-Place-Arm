@@ -16,6 +16,42 @@ from sensor_msgs.msg import CameraInfo
 from apriltag_ros.msg import *
 from cv_bridge import CvBridge, CvBridgeError
 
+class Block():
+    """!
+    @brief This class describes a shape in the workspace
+    """
+
+    def __init__(self):
+        """!
+        @brief Constructs an instance of a block object
+        """
+
+        self.XYZ = self.assignXYZ()
+        self.shape = "unassigned"
+        self.color = "unassigned"
+        self.angle = 0.
+
+    def assignXYZ(self):
+        """!
+        @brief Assigns XYZ coordinates to block object
+        """
+        self.XYZ = Camera.returnBlockXYZ()
+
+    def assignShape(self):
+        """!
+        @brief Assigns shape to block object
+        """
+
+
+    def assignColor(self):
+        """!
+        @brief Assigns color to block object
+        """    
+    
+    def assignColor(self):
+        """!
+        @brief Assigns color to block object
+        """   
 
 class Camera():
     """!
@@ -23,8 +59,9 @@ class Camera():
     """
     def __init__(self):
         """!
-        @brief      Construcfalsets a new instance.
+        @brief      Constructs a new instance.
         """
+        self.block_coords = np.zeros([4,1])
         self.VideoFrame = np.zeros((720, 1280, 3)).astype(np.uint8)
         self.GridFrame = np.zeros((720, 1280, 3)).astype(np.uint8)
         self.ContourFrame = np.zeros((720, 1280, 3)).astype(np.uint8)
@@ -55,6 +92,14 @@ class Camera():
         self.block_contours = np.array([])
         self.block_detections = np.array([])
         self.homography = np.array([])
+
+    def returnBlockXYZ(self):
+        """!
+        @brief reeturns array of block coordinates - to be used for block class
+        """
+
+        return self.block_coords
+
     def extrinsic_calc(self):
         cam_angle = 13
         t = 180-cam_angle
@@ -276,18 +321,35 @@ class Camera():
         _, contours, _ = cv2.findContours(gray_copy, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
         moments = []
+        
         for i in range(len(contours)):
             # cv2.drawContours(image, contours, i, contour_color, 3)
             moments.append(cv2.moments(contours[i]))
             x = int(moments[i]['m10']/moments[i]['m00'])
             y = int(moments[i]['m01']/moments[i]['m00'])
+            z = self.DepthFrameRaw[y][x]
             cv2.circle(image, (x,y), radius = 5, color=(0,0,0), thickness=-1) 
             rect = cv2.minAreaRect(contours[i])
             box = cv2.boxPoints(rect)
             box = np.intp(box)
             cv2.drawContours(image,[box],0,contour_color,2)
+            orientation = rect[2]
+
+            H_inv =  self.extrinsic_matrix
+            cam_coords = z*np.matmul(np.linalg.inv(self.intrinsic_matrix), [x, y, 1])
+            world_coords = np.matmul(H_inv, np.append(np.array(cam_coords),1))
+            world_coords[-1] = orientation
+            world_coords = np.expand_dims(world_coords, axis=1)
+            # print(np.shape(world_coords))
+            # print(world_coords)
+            # print(np.shape(self.block_coords))
+            
+            self.block_coords = np.hstack((self.block_coords, world_coords))
+            # print(self.block_coords)
             cv2.putText(image, str(cv2.contourArea(contours[i])), (box[2,0],box[2,1]), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (36,255,12), 2)
-            cv2.putText(image, str(round(rect[2],2)), (box[0,0],box[0,1]), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (36,255,12), 2)
+            # cv2.putText(image, str(round(rect[2],2)), (box[0,0],box[0,1]), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (36,255,12), 2)
+            # cv2.putText(image, str(world_coords), (box[0,0],box[0,1]), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (36,255,12), 2)
+
 
         return image, moments, contours
 
@@ -299,6 +361,7 @@ class Camera():
                     locations in self.block_detections
         """
         img_hsv = cv2.cvtColor(self.VideoFrame.copy(), cv2.COLOR_RGB2HSV)
+        self.block_coords = np.zeros([4,1])
         contoured_image, red_moments, red_contours = self.mask_and_contour(img_hsv, "red")
         contoured_image, green_moments, green_contours = self.mask_and_contour(img_hsv, "green")
         contoured_image, blue_moments, blue_contours = self.mask_and_contour(img_hsv, "blue")

@@ -166,7 +166,7 @@ def to_s_matrix(w, v):
     pass
 
 
-def IK_geometric(psi, pose):
+def IK_geometric(psi, pose, block_angle = 0):
     """!
     @brief      Get all possible joint configs that produce the pose.
 
@@ -174,7 +174,8 @@ def IK_geometric(psi, pose):
 
     @param      psi  end effector rotation from horizontal -- either specify nan or a value on input
     @param      pose       The desired pose vector as np.array 
-
+    @param      block_angle An optional parameter that describes the angle of the block being being up
+                wrt to the workspace y-axis
     @return     All four possible joint configurations in a numpy array 4x4 where each row is one possible joint
                 configuration
     """
@@ -203,7 +204,7 @@ def IK_geometric(psi, pose):
     #print(psi)
     if psi == math.pi/4:
             # if the hypotenuse of the desired wrist location with the vertical end effector is greater than l_2 + l_3 ( max arm length)
-        print("here")
+        #print("here")
         if math.sqrt(r_des**2 + s_des**2) >= ( l_2 + l_3):
             print("outside reachable space")
             psi = 0 #[rad]
@@ -298,10 +299,10 @@ def IK_geometric(psi, pose):
         alpha_3 = theta_21_2c - theta_31_2c
         alpha_4 = theta_22_2c - theta_32_2c
 
-        theta_51 = 0
-        theta_52 = 0
-        theta_51_2 = 0
-        theta_52_2 = 0
+        theta_51 = 0     #block_angle*D2R
+        theta_52 = 0     #block_angle*D2R
+        theta_51_2 = 0       #block_angle*D2R
+        theta_52_2 = 0       #block_angle*D2R
 
         theta_21c -= 5*D2R
         theta_22c -= 5*D2R
@@ -315,10 +316,10 @@ def IK_geometric(psi, pose):
         alpha_3 = -math.pi + theta_21_2c - theta_31_2c
         alpha_4 = -math.pi + theta_22_2c - theta_32_2c
 
-        theta_51 = theta_11
-        theta_52 = theta_11
-        theta_51_2 = theta_12
-        theta_52_2 = theta_12
+        theta_51 = theta_11 + block_angle*D2R
+        theta_52 = theta_11 + block_angle*D2R
+        theta_51_2 = theta_12 + block_angle*D2R
+        theta_52_2 = theta_12 + block_angle*D2R
 
     theta_41 = alpha_1 + psi
     theta_42 = alpha_2 + psi

@@ -322,7 +322,7 @@ class Gui(QMainWindow):
         next = next_pose
         curr = self.rxarm.get_positions()
         diff = next - curr
-        weighted = np.multiply(diff,np.array([3.75,4,2,1.5,1.5]))
+        weighted = np.multiply(diff,np.array([3.75,3.5,2,1.5,1.5]))
         norm = np.linalg.norm(weighted, ord=2)
         return norm/4
 

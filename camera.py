@@ -349,7 +349,7 @@ class Camera():
             cv2.putText(image, str(cv2.contourArea(contours[i])), (box[2,0],box[2,1]), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (36,255,12), 2)
             # cv2.putText(image, str(round(rect[2],2)), (box[0,0],box[0,1]), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (36,255,12), 2)
             # cv2.putText(image, str(world_coords), (box[0,0],box[0,1]), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (36,255,12), 2)
-
+        #print(self.block_coords)
 
         return image, moments, contours
 

@@ -41,12 +41,15 @@ class Block():
         """!
         @brief Assigns shape to block object
         """
+        self.shape = Camera.returnBlockShape()
 
 
     def assignColor(self):
         """!
         @brief Assigns color to block object
         """    
+
+        self.color = Camera.returnBlockColor()
     
     def assignColor(self):
         """!
@@ -100,6 +103,20 @@ class Camera():
 
         return self.block_coords
 
+    def returnBlockShape(self):
+        """!
+        @brief reeturns array of block coordinates - to be used for block class
+        """
+
+        return self.block_shapes
+
+    def returnBlockColor(self):
+        """!
+        @brief reeturns array of block coordinates - to be used for block class
+        """
+
+        return self.block_colors
+
     def extrinsic_calc(self):
         cam_angle = 13
         t = 180-cam_angle
@@ -126,9 +143,9 @@ class Camera():
            [0,0,0,1]])
 
         Ryttt = np.array([[math.cos(np.radians(ttt)),0,math.sin(np.radians(ttt)),0],
-           [0,1,0,0],
-           [-1*math.sin(np.radians(ttt)),0, math.cos(np.radians(ttt)),0],
-           [0,0,0,1]])
+                          [0,1,0,0],
+                          [-1*math.sin(np.radians(ttt)),0, math.cos(np.radians(ttt)),0],
+                          [0,0,0,1]])
  
         H = np.matmul(Tyb,Tzc)
         H = np.matmul(H,Rxt)
@@ -284,75 +301,6 @@ class Camera():
         """
         pass
 
-    # def nothing(self, x):
-    #     pass
-
-    # def sliders(self, img):
-    #     # Create a window
-    #     cv2.namedWindow('image')
-
-    #     # create trackbars for color change
-    #     # Hue is from 0-179 for Opencv
-    #     cv2.createTrackbar('HMin', 'image', 0, 179, self.nothing)
-    #     cv2.createTrackbar('SMin', 'image', 0, 255, self.nothing)
-    #     cv2.createTrackbar('VMin', 'image', 0, 255, self.nothing)
-    #     cv2.createTrackbar('HMax', 'image', 0, 179, self.nothing)
-    #     cv2.createTrackbar('SMax', 'image', 0, 255, self.nothing)
-    #     cv2.createTrackbar('VMax', 'image', 0, 255, self.nothing)
-
-    #     # Set default value for MAX HSV trackbars.
-    #     cv2.setTrackbarPos('HMax', 'image', 179)
-    #     cv2.setTrackbarPos('SMax', 'image', 255)
-    #     cv2.setTrackbarPos('VMax', 'image', 255)
-
-    #     # Initialize to check if HSV min/max value changes
-    #     hMin = sMin = vMin = hMax = sMax = vMax = 0
-    #     phMin = psMin = pvMin = phMax = psMax = pvMax = 0
-
-    #     output = img
-    #     waitTime = 33
-
-    #     while (1):
-
-    #         # get current positions of all trackbars
-    #         hMin = cv2.getTrackbarPos('HMin', 'image')
-    #         sMin = cv2.getTrackbarPos('SMin', 'image')
-    #         vMin = cv2.getTrackbarPos('VMin', 'image')
-
-    #         hMax = cv2.getTrackbarPos('HMax', 'image')
-    #         sMax = cv2.getTrackbarPos('SMax', 'image')
-    #         vMax = cv2.getTrackbarPos('VMax', 'image')
-
-    #         # Set minimum and max HSV values to display
-    #         lower = np.array([hMin, sMin, vMin])
-    #         upper = np.array([hMax, sMax, vMax])
-
-    #         # Create HSV Image and threshold into a range.
-    #         hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-    #         mask = cv2.inRange(hsv, lower, upper)
-    #         output = cv2.bitwise_and(img, img, mask=mask)
-
-    #         # Print if there is a change in HSV value
-    #         if ((phMin != hMin) | (psMin != sMin) | (pvMin != vMin) | (phMax != hMax) | (psMax != sMax) | (pvMax != vMax)):
-    #             # print("(hMin = %d , sMin = %d, vMin = %d), (hMax = %d , sMax = %d, vMax = %d)" % (
-    #                 # hMin, sMin, vMin, hMax, sMax, vMax))
-    #             phMin = hMin
-    #             psMin = sMin
-    #             pvMin = vMin
-    #             phMax = hMax
-    #             psMax = sMax
-    #             pvMax = vMax
-
-    #         # Display output image
-    #         cv2.imshow('image', output)
-
-    #         # Wait longer to prevent freeze for videos.
-    #         if cv2.waitKey(waitTime) & 0xFF == ord('q'):
-    #             break
-
-    #     cv2.destroyAllWindows()
-
-    #     pass
 
     def mask_and_contour(self, image, color):
         """
@@ -369,8 +317,8 @@ class Camera():
         # # somewhere that doesn't fall within the specified HSV range
 
         if (color == "red"):
-            mask1 = cv2.inRange(copy, (173,100,100), (179, 255, 255))
-            mask2 = cv2.inRange(copy, (0,100,100), (3, 255, 255))
+            mask1 = cv2.inRange(copy, (170,140,80), (179, 255, 255))
+            mask2 = cv2.inRange(copy, (0,55,70), (3, 255, 255))
             mask = mask1 + mask2
             contour_color = (175,255,255)
         elif (color == "orange"):
@@ -380,7 +328,7 @@ class Camera():
             mask = cv2.inRange(copy, (20,135,160), (27, 255, 255))
             contour_color = (23,200,250)
         elif (color == "green"):
-            mask = cv2.inRange(copy, (60,50,70), (90, 255, 255))
+            mask = cv2.inRange(copy, (60,50,80), (90, 255, 255))
             contour_color = (75,255,255)
         elif (color == "blue"):
             mask = cv2.inRange(copy, (93,207,109), (108, 255, 255))
@@ -395,12 +343,12 @@ class Camera():
 
         # median blur filter helps reduce noise. the number 3 corresponds to kernel size
         # increasing the second argument will cause more blurring
-        copy = cv2.medianBlur(copy,3)
+        copy = cv2.medianBlur(copy,5)
 
         # we learned these in lecture. they reduce false positives on the play field and 
         # # also will fill in the image when its grainy
-        copy = cv2.morphologyEx(copy, cv2.MORPH_OPEN, np.ones((7,7),np.uint8))
-        copy = cv2.morphologyEx(copy, cv2.MORPH_CLOSE, np.ones((7,7),np.uint8))
+        copy = cv2.morphologyEx(copy, cv2.MORPH_OPEN, np.ones((3,3),np.uint8))
+        copy = cv2.morphologyEx(copy, cv2.MORPH_CLOSE, np.ones((3,3),np.uint8))
 
         # setting a threshold to make the contours easier to find
         _, copy = cv2.threshold(copy, 70,255, cv2.THRESH_BINARY)
@@ -473,8 +421,7 @@ class Camera():
             # write the contour area on the image
             cv2.putText(image, str(cv2.contourArea(contours[i])), (box[2,0],box[2,1]), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (36,255,12), 2)
 
-        # print(self.block_coords)
-        # rospy.sleep(2)
+        print(self.block_coords)
 
         return image, moments, contours
 
@@ -494,6 +441,7 @@ class Camera():
         contoured_image, purple_moments, purple_contours = self.mask_and_contour(img_hsv, "purple")
         contoured_image, yellow_moments, yellow_contours = self.mask_and_contour(img_hsv, "yellow")
         contoured_image, orange_moments, orange_contours = self.mask_and_contour(img_hsv, "orange")
+        grid_box = np.array([[-450,-150], [-450, 450], [450, 450], [450, -150]])
         self.ContourFrame = cv2.cvtColor(contoured_image, cv2.COLOR_HSV2RGB)
         pass
 

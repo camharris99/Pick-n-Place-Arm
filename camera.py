@@ -284,10 +284,92 @@ class Camera():
         """
         pass
 
+    # def nothing(self, x):
+    #     pass
+
+    # def sliders(self, img):
+    #     # Create a window
+    #     cv2.namedWindow('image')
+
+    #     # create trackbars for color change
+    #     # Hue is from 0-179 for Opencv
+    #     cv2.createTrackbar('HMin', 'image', 0, 179, self.nothing)
+    #     cv2.createTrackbar('SMin', 'image', 0, 255, self.nothing)
+    #     cv2.createTrackbar('VMin', 'image', 0, 255, self.nothing)
+    #     cv2.createTrackbar('HMax', 'image', 0, 179, self.nothing)
+    #     cv2.createTrackbar('SMax', 'image', 0, 255, self.nothing)
+    #     cv2.createTrackbar('VMax', 'image', 0, 255, self.nothing)
+
+    #     # Set default value for MAX HSV trackbars.
+    #     cv2.setTrackbarPos('HMax', 'image', 179)
+    #     cv2.setTrackbarPos('SMax', 'image', 255)
+    #     cv2.setTrackbarPos('VMax', 'image', 255)
+
+    #     # Initialize to check if HSV min/max value changes
+    #     hMin = sMin = vMin = hMax = sMax = vMax = 0
+    #     phMin = psMin = pvMin = phMax = psMax = pvMax = 0
+
+    #     output = img
+    #     waitTime = 33
+
+    #     while (1):
+
+    #         # get current positions of all trackbars
+    #         hMin = cv2.getTrackbarPos('HMin', 'image')
+    #         sMin = cv2.getTrackbarPos('SMin', 'image')
+    #         vMin = cv2.getTrackbarPos('VMin', 'image')
+
+    #         hMax = cv2.getTrackbarPos('HMax', 'image')
+    #         sMax = cv2.getTrackbarPos('SMax', 'image')
+    #         vMax = cv2.getTrackbarPos('VMax', 'image')
+
+    #         # Set minimum and max HSV values to display
+    #         lower = np.array([hMin, sMin, vMin])
+    #         upper = np.array([hMax, sMax, vMax])
+
+    #         # Create HSV Image and threshold into a range.
+    #         hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    #         mask = cv2.inRange(hsv, lower, upper)
+    #         output = cv2.bitwise_and(img, img, mask=mask)
+
+    #         # Print if there is a change in HSV value
+    #         if ((phMin != hMin) | (psMin != sMin) | (pvMin != vMin) | (phMax != hMax) | (psMax != sMax) | (pvMax != vMax)):
+    #             # print("(hMin = %d , sMin = %d, vMin = %d), (hMax = %d , sMax = %d, vMax = %d)" % (
+    #                 # hMin, sMin, vMin, hMax, sMax, vMax))
+    #             phMin = hMin
+    #             psMin = sMin
+    #             pvMin = vMin
+    #             phMax = hMax
+    #             psMax = sMax
+    #             pvMax = vMax
+
+    #         # Display output image
+    #         cv2.imshow('image', output)
+
+    #         # Wait longer to prevent freeze for videos.
+    #         if cv2.waitKey(waitTime) & 0xFF == ord('q'):
+    #             break
+
+    #     cv2.destroyAllWindows()
+
+    #     pass
+
     def mask_and_contour(self, image, color):
-        copy = image.copy()
+        """
+        @brief      Detect and draw contours on an image
+        
+        @param      image must be in HSV
+        """
+
+        copy = image.copy() #create a copy of the image
+
+        # specify the HSV ranges to keep and recognize as the color provided
+        # note that red in cv2 is 0-179, so need to create two masks and sum
+        # cv2.inRange will create a binary array where zeros correspond to
+        # # somewhere that doesn't fall within the specified HSV range
+
         if (color == "red"):
-            mask1 = cv2.inRange(copy, (174,100,100), (182, 255, 255))
+            mask1 = cv2.inRange(copy, (173,100,100), (179, 255, 255))
             mask2 = cv2.inRange(copy, (0,100,100), (3, 255, 255))
             mask = mask1 + mask2
             contour_color = (175,255,255)
@@ -307,49 +389,92 @@ class Camera():
             mask = cv2.inRange(copy, (109,43,56), (135, 255, 255))
             contour_color = (115,120,255)
 
-        # print(np.shape(copy))
-        # print(np.shape(mask))
+        # this is where the magic happens. Set everywhere in the image that
+        # # corresponds to a zero in the mask also to zero
         copy[np.where(mask==0)] = [0,0,0]
-        # print(np.shape(copy))
+
+        # median blur filter helps reduce noise. the number 3 corresponds to kernel size
+        # increasing the second argument will cause more blurring
         copy = cv2.medianBlur(copy,3)
+
+        # we learned these in lecture. they reduce false positives on the play field and 
+        # # also will fill in the image when its grainy
         copy = cv2.morphologyEx(copy, cv2.MORPH_OPEN, np.ones((7,7),np.uint8))
         copy = cv2.morphologyEx(copy, cv2.MORPH_CLOSE, np.ones((7,7),np.uint8))
 
+        # setting a threshold to make the contours easier to find
         _, copy = cv2.threshold(copy, 70,255, cv2.THRESH_BINARY)
+
+        # this is all a bit annoying, need to convert from HSV to RGB so we can convert to gray
         gray_copy = cv2.cvtColor(copy, cv2.COLOR_HSV2RGB)
         gray_copy = cv2.cvtColor(gray_copy, cv2.COLOR_RGB2GRAY)
+
+        # i misspoke, this is actually where the magic happens. we can draw all of the contours
+        # # based on the processed image, which should have only one color present at this point
         _, contours, _ = cv2.findContours(gray_copy, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
         moments = []
         
-        for i in range(len(contours)):
-            # cv2.drawContours(image, contours, i, contour_color, 3)
-            moments.append(cv2.moments(contours[i]))
-            x = int(moments[i]['m10']/moments[i]['m00'])
-            y = int(moments[i]['m01']/moments[i]['m00'])
-            z = self.DepthFrameRaw[y][x]
-            cv2.circle(image, (x,y), radius = 5, color=(0,0,0), thickness=-1) 
+        # needs to be a reverse loop so we can delete entries that dont meet a criteria
+        # basically, loop through each contour and process the centroid/area etc of that contour
+        for i in range(len(contours)-1, -1, -1):
+
+            # moment stores all the information we can use to get centroid and stuff
+            moment = cv2.moments(contours[i])
+
+            # u,v are calculated from the moments. these are the centroid of the contour in mouse coordinates
+            u = int(moment['m10']/moment['m00'])
+            v = int(moment['m01']/moment['m00'])
+
+            # use depth data to get the mouse coordinate depth of the contour's centroid
+            d = self.DepthFrameRaw[v][u]
+
+            # convert mouse coordinates of centroid to camera coordinates, then to world coordinates
+            cam_coords = d*np.matmul(np.linalg.inv(self.intrinsic_matrix), [u, v, 1])
+            world_coords = np.matmul(self.extrinsic_matrix, np.append(np.array(cam_coords),1))
+
+            #checks bounds out of board
+            if (world_coords[0] > 450 or world_coords[0] < -450 or world_coords[1] < -150 or world_coords[1] > 450):
+                del contours[i]
+                continue
+
+            # calculating area of the contour. this can be compared to perimeter or something to determine shape
+            contour_area = cv2.contourArea(contours[i])
+
+            # check that area is at least as large as the smallest block
+            if (contour_area < 400):
+                del contours[i]
+                continue
+
+            # add the current moment to the front of the list of moments
+            moments.insert(0, moment)
+
+            # draw a circle on the image at the centroid
+            cv2.circle(image, (u,v), radius = 5, color=(0,0,0), thickness=-1) 
+
+            # find the rectangle with the minimum area of the contour, along with the bounding points
             rect = cv2.minAreaRect(contours[i])
             box = cv2.boxPoints(rect)
             box = np.intp(box)
+
+            # draw the contour using the rectangle of minimum area
             cv2.drawContours(image,[box],0,contour_color,2)
+
+            # store orientation to flat of the contour
             orientation = rect[2]
 
-            H_inv =  self.extrinsic_matrix
-            cam_coords = z*np.matmul(np.linalg.inv(self.intrinsic_matrix), [x, y, 1])
-            world_coords = np.matmul(H_inv, np.append(np.array(cam_coords),1))
+            # store the last element of the world coordinates as the orientation of the block
             world_coords[-1] = orientation
             world_coords = np.expand_dims(world_coords, axis=1)
-            # print(np.shape(world_coords))
-            # print(world_coords)
-            # print(np.shape(self.block_coords))
             
+            # add the world coordinates of the current contour to self.block_coords
             self.block_coords = np.hstack((self.block_coords, world_coords))
-            # print(self.block_coords)
+
+            # write the contour area on the image
             cv2.putText(image, str(cv2.contourArea(contours[i])), (box[2,0],box[2,1]), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (36,255,12), 2)
-            # cv2.putText(image, str(round(rect[2],2)), (box[0,0],box[0,1]), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (36,255,12), 2)
-            # cv2.putText(image, str(world_coords), (box[0,0],box[0,1]), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (36,255,12), 2)
-        #print(self.block_coords)
+
+        # print(self.block_coords)
+        # rospy.sleep(2)
 
         return image, moments, contours
 
@@ -361,6 +486,7 @@ class Camera():
                     locations in self.block_detections
         """
         img_hsv = cv2.cvtColor(self.VideoFrame.copy(), cv2.COLOR_RGB2HSV)
+        # self.sliders(img_hsv)
         self.block_coords = np.zeros([4,1])
         contoured_image, red_moments, red_contours = self.mask_and_contour(img_hsv, "red")
         contoured_image, green_moments, green_contours = self.mask_and_contour(img_hsv, "green")

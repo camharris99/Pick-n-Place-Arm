@@ -224,7 +224,7 @@ class StateMachine():
         norm = np.linalg.norm(weighted, ord=2)
         return norm/4
 
-    def moveBlock(self, input_pose, block_angle=0):
+    def moveBlock(self, input_pose, height, block_angle=0):
         pose = np.zeros([6,1])
         pose[0:3,0] = np.reshape( input_pose , (3,))
             #print(kinematics.IK_geometric(math.pi/4, pose))
@@ -240,13 +240,17 @@ class StateMachine():
             leave_pose[2,0] += 75 # [mm]
 
             pre_pose = np.copy(pose)
-            pre_pose[2,0] += 60 # [mm]
 
+
+            pre_pose[2,0] += height # [mm]
+
+            # if the block is not lined up with the grid
             if block_angle != 0:
 
                 presoln, prepsi = kinematics.IK_geometric(math.pi/4, pre_pose, block_angle)
                 #print(presoln)
             
+            # block lined up with grid
             else:
                 presoln, prepsi = kinematics.IK_geometric(math.pi/4, pre_pose)
 
@@ -257,9 +261,10 @@ class StateMachine():
             rospy.sleep(2)
 
             if prepsi == 0:
-                leave_pose[0,0] *= 1.1
-                leave_pose[1,0] *= 1.1
+                leave_pose[0,0] = pre_pose[0,0]
+                leave_pose[1,0] = pre_pose[1,0]
                 pose[2,0] -= 30 # [mm]
+
             if block_angle != 0:
 
                 solns, solnpsi = kinematics.IK_geometric(prepsi, pose,block_angle)
@@ -282,7 +287,7 @@ class StateMachine():
                 lsoln, leavepsi = kinematics.IK_geometric(solnpsi, leave_pose, block_angle)
                 #print(lsoln)
             else:
-                
+
                 lsoln, leavepsi = kinematics.IK_geometric(solnpsi, leave_pose)
                 
             move = self.changeMoveSpeed(lsoln[1,:])
@@ -315,10 +320,14 @@ class StateMachine():
             self.rxarm.set_positions(presoln[1,:])
             rospy.sleep(2)
 
+            
             if prepsi == math.pi/2:
-                pose[2,0] += 30
+            
+                pose[2,0] += height
             else:
-                pose[2,0] += 10
+                pose[2,0] += height/2
+
+
             solns, solnpsi = kinematics.IK_geometric(prepsi, pose)
             move = self.changeMoveSpeed(solns[1,:])
             self.rxarm.set_moving_time(move)
@@ -503,7 +512,6 @@ class StateMachine():
 
         #print(self.waypoints)
 
-    
 
     def autonomy(self):
         """!
@@ -513,36 +521,62 @@ class StateMachine():
         self.next_state = "idle"
 
         print("test pre block coords")
-        print("there are: ", self.camera.num_blocks, " blocks!")
-        pre_block_coordsXYZ = self.camera.block_coords.copy()
-        print(np.shape(pre_block_coordsXYZ)[1])
-        print(pre_block_coordsXYZ)
+        #print("there are: ", self.camera.num_blocks, " blocks!")
+        #self.camera.blockDetector(True)
+        block_coordsXYZ = list(self.camera.block_coords)
+        #print(np.shape(pre_block_coordsXYZ)[1])
+        #print(pre_block_coordsXYZ)
 
-        while (np.shape(pre_block_coordsXYZ)[1] < self.camera.num_blocks + 1):
-            pre_block_coordsXYZ = self.camera.block_coords.copy()
+        while (len(block_coordsXYZ) < self.camera.num_blocks + 1):
+            print("num blocks: ", self.camera.num_blocks)
+            print("current length: ", len(block_coordsXYZ))
+            rospy.sleep(0.01)
+            block_coordsXYZ = list(self.camera.block_coords)
         
-        print(pre_block_coordsXYZ)
-        print(np.shape(pre_block_coordsXYZ)[1])
+        #print(np.shape(pre_block_coordsXYZ)[1])
         print(self.camera.num_blocks)
-        print("in armtonomy!")
-        pre_block_coordsXYZ = self.camera.block_coords.copy()
+        # print("in armtonomy!")
+        block_coordsXYZ = list(self.camera.block_coords)
+
+        # for elem in block_coordsXYZ:
+        #     print("color: " + elem.color)
+        #     print("xyz: " + str(elem.XYZ))
+        #     print("shape: " + elem.shape)
+        #     print("angle: " + str(elem.angle))
+        #     print("height: " + str(elem.height))
+        
         #print(pre_block_coordsXYZ)
         # this removes the first column of zeros that is necessary to not make numpy unhappy when hstacking stuff
-        block_coordsXYZ = np.transpose(pre_block_coordsXYZ[:,1:np.shape(pre_block_coordsXYZ)[1]])
-        print(block_coordsXYZ)
+        #block_coordsXYZ = np.transpose(pre_block_coordsXYZ[:,1:np.shape(pre_block_coordsXYZ)[1]])
+        #print(block_coordsXYZ)
+        
+        def sort_by_norm(val):
+        
+            return np.linalg.norm(val.XYZ)
+        
+        block_coordsXYZ.sort(key=sort_by_norm)
+
+        #for elem in block_coordsXYZ:
+        #     print("color: " + elem.color)
+            #print(np.linalg.norm(elem.XYZ))
+            #print("xyz: " + str(elem.XYZ))
+        #     print("shape: " + elem.shape)
+        #     print("angle: " + str(elem.angle))
+        
         for elem in block_coordsXYZ:
             #print(elem)
             #print(" ")
-            x = elem[0]
-            y = elem[1]
-            z = elem[2]
-            angle = elem[3]
+            x = elem.XYZ[0]
+            y = elem.XYZ[1]
+            z = elem.XYZ[2]
+            angle = elem.angle
+            shape = elem.shape
             if x < -450 or x > 450 or y < -150 or y > 450 or z < -5:
                 print("passed point")
                 pass
             else:
                 print("starting movement")
-                self.moveBlock(elem[0:3], angle)
+                self.moveBlock(elem.XYZ, elem.height, angle)
                 rospy.sleep(0.5)
                 
                 # ADDING SOME STUFF TO POTENTIALLY IMPROVE AUTONOMY
@@ -551,7 +585,9 @@ class StateMachine():
 
                 intrinsic = self.camera.intrinsic_matrix
                 extrinsic = self.camera.extrinsic_matrix
-            
+
+
+                # this if statements finds the z_world value of a specified point in pixel coordinates
                 if self.camera.homography.size != 0:
                 #print(self.camera.homography)
                     uv_trans = np.zeros([3,1])
@@ -560,11 +596,14 @@ class StateMachine():
                     
                     # pixel coordinates in homography --> they are in this form arbitarily, we could pick pre-homography pixel coords to get
                     # depth reading from... i just did it because that way i can pick points from the calibrated video display
-                    uv_hom = np.array([[820],[284],[1]])
+                    uv_hom = np.array([[847],[277],[1]])
 
                     # undoing hommography transform
                     uv_trans = np.matmul( np.linalg.inv(self.camera.homography) , uv_hom )
-                    
+                    # print("uv_trans")
+                    # print(uv_trans)
+                    # print(" ")
+
                     # normalizing x and y pixel locations
                     uv_trans[0,0] /= uv_trans[2,0]
                     uv_trans[1,0] /= uv_trans[2,0]
@@ -573,16 +612,25 @@ class StateMachine():
                     z = self.camera.DepthFrameRaw[int(uv_trans[1,0])][int(uv_trans[0,0])]
                 #print(z)
                     cam_coords = z*np.matmul(np.linalg.inv(intrinsic), uv_trans)
-                    #print(z)
+
+                    print("z")
+                    print(z)
+                    print(" ")
                              
-                    world_coords = np.matmul(extrinsic, np.append(cam_coords,1))
+                    world_coords = np.matmul(extrinsic, np.append(np.array(cam_coords),1))
                     
                     # the depth reading in world coordinates of the specific point of interest for block placement
                     z_w = world_coords[2]
-                    #print(z_w)
-                self.moveBlock(np.array([200,225,z_w+7.5]))
+
+                    print("world coords")
+                    print(world_coords)
+                    print(" ")
+
+                self.moveBlock(np.array([world_coords[0],world_coords[1],z_w+7.5]), elem.height)
                 rospy.sleep(0.5)
-                #self.moveBlock(np.array([0,425,0]))
+
+
+                
         # end check to determine if the autonomy button is still pressed
         #if self.autoFlag == True:
         #    self.autonomy()

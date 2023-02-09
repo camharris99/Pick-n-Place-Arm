@@ -304,10 +304,15 @@ def IK_geometric(psi, pose, block_angle = 0):
         theta_51_2 = 0       #block_angle*D2R
         theta_52_2 = 0       #block_angle*D2R
 
-        theta_21c -= 5*D2R
-        theta_22c -= 5*D2R
-        theta_21_2c -= 5*D2R
-        theta_22_2c -= 5*D2R
+        theta_21c -= 10*D2R
+        theta_22c -= 10*D2R
+        theta_21_2c -= 10*D2R
+        theta_22_2c -= 10*D2R
+    
+        theta_41 = alpha_1 + psi - 10*D2R
+        theta_42 = alpha_2 + psi - 10*D2R
+        theta_41_2 = alpha_3 + psi - 10*D2R
+        theta_42_2 = alpha_4 + psi - 10*D2R
     
     elif psi == math.pi/2:
 
@@ -321,10 +326,10 @@ def IK_geometric(psi, pose, block_angle = 0):
         theta_51_2 = theta_12 + block_angle*D2R
         theta_52_2 = theta_12 + block_angle*D2R
 
-    theta_41 = alpha_1 + psi
-    theta_42 = alpha_2 + psi
-    theta_41_2 = alpha_3 + psi
-    theta_42_2 = alpha_4 + psi
+        theta_41 = alpha_1 + psi
+        theta_42 = alpha_2 + psi 
+        theta_41_2 = alpha_3 + psi 
+        theta_42_2 = alpha_4 + psi 
 
     
 

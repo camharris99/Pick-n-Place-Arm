@@ -21,40 +21,41 @@ class Block():
     @brief This class describes a shape in the workspace
     """
 
-    def __init__(self):
+    def __init__(self, color, xyz, shape, angle, height):
         """!
         @brief Constructs an instance of a block object
         """
 
-        self.XYZ = self.assignXYZ()
-        self.shape = "unassigned"
-        self.color = "unassigned"
-        self.angle = 0.
+        self.XYZ = xyz
+        self.shape = shape
+        self.color = color
+        self.angle = angle
+        self.height = height
 
-    def assignXYZ(self):
-        """!
-        @brief Assigns XYZ coordinates to block object
-        """
-        self.XYZ = Camera.returnBlockXYZ()
+    # def assignXYZ(self):
+    #     """!
+    #     @brief Assigns XYZ coordinates to block object
+    #     """
+    #     self.XYZ = Camera.returnBlockXYZ()
 
-    def assignShape(self):
-        """!
-        @brief Assigns shape to block object
-        """
-        self.shape = Camera.returnBlockShape()
+    # def assignShape(self):
+    #     """!
+    #     @brief Assigns shape to block object
+    #     """
+    #     self.shape = Camera.returnBlockShape()
 
 
-    def assignColor(self):
-        """!
-        @brief Assigns color to block object
-        """    
+    # def assignColor(self):
+    #     """!
+    #     @brief Assigns color to block object
+    #     """    
 
-        self.color = Camera.returnBlockColor()
+    #     self.color = Camera.returnBlockColor()
     
-    def assignColor(self):
-        """!
-        @brief Assigns color to block object
-        """   
+    # def assignColor(self):
+    #     """!
+    #     @brief Assigns color to block object
+    #     """   
 
 class Camera():
     """!
@@ -64,7 +65,7 @@ class Camera():
         """!
         @brief      Constructs a new instance.
         """
-        self.block_coords = np.zeros([4,1])
+        self.block_coords = []
         self.VideoFrame = np.zeros((720, 1280, 3)).astype(np.uint8)
         self.GridFrame = np.zeros((720, 1280, 3)).astype(np.uint8)
         self.ContourFrame = np.zeros((720, 1280, 3)).astype(np.uint8)
@@ -97,26 +98,26 @@ class Camera():
         self.homography = np.array([])
         self.num_blocks = 0
 
-    def returnBlockXYZ(self):
-        """!
-        @brief reeturns array of block coordinates - to be used for block class
-        """
+    # def returnBlockXYZ(self):
+    #     """!
+    #     @brief reeturns array of block coordinates - to be used for block class
+    #     """
 
-        return self.block_coords
+    #     return self.block_coords
 
-    def returnBlockShape(self):
-        """!
-        @brief reeturns array of block coordinates - to be used for block class
-        """
+    # def returnBlockShape(self):
+    #     """!
+    #     @brief reeturns array of block coordinates - to be used for block class
+    #     """
 
-        return self.block_shapes
+    #     return self.block_shapes
 
-    def returnBlockColor(self):
-        """!
-        @brief reeturns array of block coordinates - to be used for block class
-        """
+    # def returnBlockColor(self):
+    #     """!
+    #     @brief reeturns array of block coordinates - to be used for block class
+    #     """
 
-        return self.block_colors
+    #     return self.block_colors
 
     def extrinsic_calc(self):
         cam_angle = 13
@@ -303,7 +304,7 @@ class Camera():
         pass
 
 
-    def mask_and_contour(self, image, color):
+    def mask_and_contour(self, image, color, autonomy_flag):
         """
         @brief      Detect and draw contours on an image
         
@@ -323,13 +324,13 @@ class Camera():
             mask = mask1 + mask2
             contour_color = (175,255,255)
         elif (color == "orange"):
-            mask = cv2.inRange(copy, (3,124,154), (15, 255, 255))
+            mask = cv2.inRange(copy, (3,90,125), (15, 255, 255))
             contour_color = (8,250,250)
         elif (color == "yellow"):
             mask = cv2.inRange(copy, (20,135,160), (27, 255, 255))
             contour_color = (23,200,250)
         elif (color == "green"):
-            mask = cv2.inRange(copy, (60,50,80), (90, 255, 255))
+            mask = cv2.inRange(copy, (50,70,50), (90, 255, 255))
             contour_color = (75,255,255)
         elif (color == "blue"):
             mask = cv2.inRange(copy, (93,93,93), (110, 255, 255))
@@ -344,15 +345,15 @@ class Camera():
 
         # median blur filter helps reduce noise. the number 3 corresponds to kernel size
         # increasing the second argument will cause more blurring
-        copy = cv2.medianBlur(copy,5)
+        copy = cv2.medianBlur(copy,3)
 
         # we learned these in lecture. they reduce false positives on the play field and 
         # # also will fill in the image when its grainy
-        copy = cv2.morphologyEx(copy, cv2.MORPH_OPEN, np.ones((3,3),np.uint8))
-        copy = cv2.morphologyEx(copy, cv2.MORPH_CLOSE, np.ones((3,3),np.uint8))
+        copy = cv2.morphologyEx(copy, cv2.MORPH_OPEN, np.ones((7,7),np.uint8))
+        copy = cv2.morphologyEx(copy, cv2.MORPH_CLOSE, np.ones((7,7),np.uint8))
 
         # setting a threshold to make the contours easier to find
-        _, copy = cv2.threshold(copy, 70,255, cv2.THRESH_BINARY)
+        _, copy = cv2.threshold(copy, 50,255, cv2.THRESH_BINARY)
 
         # this is all a bit annoying, need to convert from HSV to RGB so we can convert to gray
         gray_copy = cv2.cvtColor(copy, cv2.COLOR_HSV2RGB)
@@ -363,6 +364,8 @@ class Camera():
         _, contours, _ = cv2.findContours(gray_copy, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
         moments = []
+        size = ""
+        height = 0
         
         # needs to be a reverse loop so we can delete entries that dont meet a criteria
         # basically, loop through each contour and process the centroid/area etc of that contour
@@ -395,6 +398,13 @@ class Camera():
                 del contours[i]
                 continue
 
+            if (contour_area < 800):
+                size = "small"
+                height = 25
+            else:
+                size = "large"
+                height = 38
+
             # add the current moment to the front of the list of moments
             moments.insert(0, moment)
 
@@ -415,9 +425,11 @@ class Camera():
             # store the last element of the world coordinates as the orientation of the block
             world_coords[-1] = orientation
             world_coords = np.expand_dims(world_coords, axis=1)
-            
+
+            block_obj = Block(color, world_coords[0:3], size, world_coords[3], height)
+
             # add the world coordinates of the current contour to self.block_coords
-            self.block_coords = np.hstack((self.block_coords, world_coords))
+            self.block_coords.append(block_obj)
 
             # write the contour area on the image
             cv2.putText(image, str(cv2.contourArea(contours[i])), (box[2,0],box[2,1]), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (36,255,12), 2)
@@ -426,7 +438,7 @@ class Camera():
 
         return image, moments, contours
 
-    def blockDetector(self):
+    def blockDetector(self, autonomy_flag):
         """!
         @brief      Detect blocks from rgb
 
@@ -435,13 +447,13 @@ class Camera():
         """
         img_hsv = cv2.cvtColor(self.VideoFrame.copy(), cv2.COLOR_RGB2HSV)
         # self.sliders(img_hsv)
-        self.block_coords = np.zeros([4,1])
-        contoured_image, red_moments, red_contours = self.mask_and_contour(img_hsv, "red")
-        contoured_image, green_moments, green_contours = self.mask_and_contour(img_hsv, "green")
-        contoured_image, blue_moments, blue_contours = self.mask_and_contour(img_hsv, "blue")
-        contoured_image, purple_moments, purple_contours = self.mask_and_contour(img_hsv, "purple")
-        contoured_image, yellow_moments, yellow_contours = self.mask_and_contour(img_hsv, "yellow")
-        contoured_image, orange_moments, orange_contours = self.mask_and_contour(img_hsv, "orange")
+        self.block_coords = []
+        contoured_image, red_moments, red_contours = self.mask_and_contour(img_hsv, "red", autonomy_flag)
+        contoured_image, green_moments, green_contours = self.mask_and_contour(img_hsv, "green", autonomy_flag)
+        contoured_image, blue_moments, blue_contours = self.mask_and_contour(img_hsv, "blue", autonomy_flag)
+        contoured_image, purple_moments, purple_contours = self.mask_and_contour(img_hsv, "purple", autonomy_flag)
+        contoured_image, yellow_moments, yellow_contours = self.mask_and_contour(img_hsv, "yellow", autonomy_flag)
+        contoured_image, orange_moments, orange_contours = self.mask_and_contour(img_hsv, "orange", autonomy_flag)
         # grid_box = np.array([[-450,-150], [-450, 450], [450, 450], [450, -150]])
         self.num_blocks = len(red_contours) + len(green_contours) + len(blue_contours) + len(purple_contours) \
             + len(yellow_contours) + len(orange_contours)
@@ -625,7 +637,7 @@ class VideoThread(QThread):
             depth_frame = self.camera.convertQtDepthFrame()
             tag_frame = self.camera.convertQtTagImageFrame()
             self.camera.projectGridInRGBImage()
-            self.camera.blockDetector()
+            self.camera.blockDetector(False)
             grid_frame = self.camera.convertQtGridFrame()
             contour_frame = self.camera.convertQtContourFrame()
 

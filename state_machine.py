@@ -511,11 +511,24 @@ class StateMachine():
         """
         self.status_message = "State: Autonomy"
         self.next_state = "idle"
+
+        print("test pre block coords")
+        print("there are: ", self.camera.num_blocks, " blocks!")
+        pre_block_coordsXYZ = self.camera.block_coords.copy()
+        print(np.shape(pre_block_coordsXYZ)[1])
+        print(pre_block_coordsXYZ)
+
+        while (np.shape(pre_block_coordsXYZ)[1] < self.camera.num_blocks + 1):
+            pre_block_coordsXYZ = self.camera.block_coords.copy()
         
+        print(pre_block_coordsXYZ)
+        print(np.shape(pre_block_coordsXYZ)[1])
+        print(self.camera.num_blocks)
+        print("in armtonomy!")
         pre_block_coordsXYZ = self.camera.block_coords.copy()
         #print(pre_block_coordsXYZ)
         # this removes the first column of zeros that is necessary to not make numpy unhappy when hstacking stuff
-        block_coordsXYZ = np.transpose(pre_block_coordsXYZ[:,1:-1])
+        block_coordsXYZ = np.transpose(pre_block_coordsXYZ[:,1:np.shape(pre_block_coordsXYZ)[1]])
         print(block_coordsXYZ)
         for elem in block_coordsXYZ:
             #print(elem)

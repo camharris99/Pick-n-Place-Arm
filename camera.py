@@ -95,6 +95,7 @@ class Camera():
         self.block_contours = np.array([])
         self.block_detections = np.array([])
         self.homography = np.array([])
+        self.num_blocks = 0
 
     def returnBlockXYZ(self):
         """!
@@ -331,10 +332,10 @@ class Camera():
             mask = cv2.inRange(copy, (60,50,80), (90, 255, 255))
             contour_color = (75,255,255)
         elif (color == "blue"):
-            mask = cv2.inRange(copy, (93,207,109), (108, 255, 255))
+            mask = cv2.inRange(copy, (93,93,93), (110, 255, 255))
             contour_color = (102,255,255)
         elif (color == "purple"):
-            mask = cv2.inRange(copy, (109,43,56), (135, 255, 255))
+            mask = cv2.inRange(copy, (109,0,0), (150, 255, 255))
             contour_color = (115,120,255)
 
         # this is where the magic happens. Set everywhere in the image that
@@ -421,7 +422,7 @@ class Camera():
             # write the contour area on the image
             cv2.putText(image, str(cv2.contourArea(contours[i])), (box[2,0],box[2,1]), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (36,255,12), 2)
 
-        print(self.block_coords)
+        # print(self.block_coords)
 
         return image, moments, contours
 
@@ -441,7 +442,9 @@ class Camera():
         contoured_image, purple_moments, purple_contours = self.mask_and_contour(img_hsv, "purple")
         contoured_image, yellow_moments, yellow_contours = self.mask_and_contour(img_hsv, "yellow")
         contoured_image, orange_moments, orange_contours = self.mask_and_contour(img_hsv, "orange")
-        grid_box = np.array([[-450,-150], [-450, 450], [450, 450], [450, -150]])
+        # grid_box = np.array([[-450,-150], [-450, 450], [450, 450], [450, -150]])
+        self.num_blocks = len(red_contours) + len(green_contours) + len(blue_contours) + len(purple_contours) \
+            + len(yellow_contours) + len(orange_contours)
         self.ContourFrame = cv2.cvtColor(contoured_image, cv2.COLOR_HSV2RGB)
         pass
 

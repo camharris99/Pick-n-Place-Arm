@@ -258,9 +258,10 @@ class RXArmThread(QThread):
         """
         QThread.__init__(self, parent=parent)
         self.rxarm = rxarm
-        # waist_pid = self.rxarm.get_joint_position_pid_params("waist")
+        waist_pid = self.rxarm.get_joint_position_pid_params("waist")
         # waist_pid[-1] += 1500
-        # print(waist_pid)
+        # waist_pid[0] += 200
+        print(waist_pid)
         # self.rxarm.set_joint_position_pid_params("waist", waist_pid)
         rospy.Subscriber('/rx200/joint_states', JointState, self.callback)
         rospy.sleep(0.5)

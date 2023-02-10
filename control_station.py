@@ -282,6 +282,8 @@ class Gui(QMainWindow):
                 uv_trans = np.zeros([3,1])
                 #print(np.array([[pt.x()],[pt.y()],[z]]))
                 uv_hom = np.array([[pt.x()],[pt.y()],[1]])
+                #print("control uv hom: ")
+                #print(uv_hom)
                 uv_trans = np.matmul( np.linalg.inv(self.camera.homography) , uv_hom )
                 uv_trans[0,0] /= uv_trans[2,0]
                 uv_trans[1,0] /= uv_trans[2,0]
@@ -304,6 +306,8 @@ class Gui(QMainWindow):
                                              (pt.x(), pt.y(), z))
 
                 cam_coords = z*np.matmul(np.linalg.inv(intrinsic), [pt.x(), pt.y(), 1])
+                #print("control coords: ")
+                #print(cam_coords)
             #print(str(pt.x()) + ", " + str(pt.y()))
             H_inv =  extrinsic
          

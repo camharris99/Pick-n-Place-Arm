@@ -304,17 +304,40 @@ def IK_geometric(psi, pose, block_angle = 0):
         theta_51_2 = 0       #block_angle*D2R
         theta_52_2 = 0       #block_angle*D2R
 
-        theta_21c -= 10*D2R
-        theta_22c -= 10*D2R
-        theta_21_2c -= 10*D2R
-        theta_22_2c -= 10*D2R
+        # this if elif else adjusts the shoulder angle for gravity depending on how low the target height is
+        # there might need to be more work done here - this was just an initial attempt at scaling to compensate for motor sag
+        if z_c < 60:
+            theta_21c -= 10*D2R
+            theta_22c -= 10*D2R
+            theta_21_2c -= 10*D2R
+            theta_22_2c -= 10*D2R
     
+        elif z_c < 120:
+            theta_21c -= 8.5*D2R
+            theta_22c -= 8.5*D2R
+            theta_21_2c -= 8.5*D2R
+            theta_22_2c -= 8.5*D2R
+
+        else: 
+            theta_21c -= 7.5*D2R
+            theta_22c -= 7.5*D2R
+            theta_21_2c -= 7.5*D2R
+            theta_22_2c -= 7.5*D2R
+
         theta_41 = alpha_1 + psi - 10*D2R
         theta_42 = alpha_2 + psi - 10*D2R
         theta_41_2 = alpha_3 + psi - 10*D2R
         theta_42_2 = alpha_4 + psi - 10*D2R
     
     elif psi == math.pi/2:
+
+        if r > 200:
+            theta_21c -= 2*D2R
+            theta_22c -= 2*D2R
+            theta_21_2c -= 2*D2R
+            theta_22_2c -= 2*D2R
+
+
 
         alpha_1 = -math.pi + theta_21c - theta_31c
         alpha_2 = -math.pi + theta_22c - theta_32c

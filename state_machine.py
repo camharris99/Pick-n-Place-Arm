@@ -227,15 +227,19 @@ class StateMachine():
     def moveBlock(self, input_pose, height, prev_psi, block_angle=0):
         pose = np.zeros([6,1])
         pose[0:3,0] = np.reshape( input_pose , (3,))
-        print(pose)
+        #print(pose)
             #print(kinematics.IK_geometric(math.pi/4, pose))
             # # setting phi, theta, psi values -- keeping as zero for now b/c this shit no work!
             # # no change to pose because these values are already zero
             # # now we should call the inverse kinematics function to return the joint angles to reach the desired mouse position
-            
+
+        ##                                              ##
+        ## THIS SECTION IS FOR WHEN THE GRIPPER IS OPEN ## 
+        ##                                              ##
+
         if self.GripFlag == True: # i.e. gripper is open
 
-            # arm pose after closing or opening gripper on block
+            # arm pose after closing gripper on block
             leave_pose = np.copy(pose)
             leave_pose[0,0] *= 0.9
             leave_pose[1,0] *= 0.9
@@ -245,15 +249,28 @@ class StateMachine():
             pre_pose = np.copy(pose)
             pre_pose[2,0] += height # [mm]
 
-            # if the block is not lined up with the grid
+            # if the block is not lined up with the grid, figure out the best ee oritentation for block pickup
             if block_angle != 0:
 
                 presoln, prepsi = kinematics.IK_geometric(math.pi/4, pre_pose, block_angle)
-                
             
             # block lined up with grid
             else:
                 presoln, prepsi = kinematics.IK_geometric(math.pi/4, pre_pose)
+
+            int_pose = np.zeros([1,5])
+            int_pose = presoln[1,:]
+            int_pose[1] = -35.95*D2R
+            int_pose[2] = 21.18*D2R
+            int_pose[3] = -59.59*D2R
+            int_pose[4] = 0.
+
+            move = self.changeMoveSpeed(int_pose)
+            self.rxarm.set_moving_time(move)
+            self.rxarm.set_accel_time(move/4)
+            self.rxarm.set_positions(int_pose)
+            rospy.sleep(1)
+
 
             # setting move speed for pre approach to block or drop off
             move = self.changeMoveSpeed(presoln[1,:])
@@ -262,13 +279,17 @@ class StateMachine():
             self.rxarm.set_positions(presoln[1,:])
             rospy.sleep(2)
 
-            # if the end effector is horizontal then make the x and y coordinate of the leaving pose the same as upon approach
+            # if the end effector is horizontal then make the x and y coordinate of the leaving pose the same as upon approach (i.e. only movement 
+            # in the z direction when leaving)
             if prepsi == 0:
                 leave_pose[0,0] = pre_pose[0,0]
                 leave_pose[1,0] = pre_pose[1,0]
                 
                 # this accounts for the difference in the end effector z location between when the end effector is horizontal vs vertical
-                pose[2,0] -= 30 # [mm]
+                #if prev_psi == math.pi/2:
+
+                # i actually think this is just to make the gripper pick up blocks closer to the ee center when ee is horizontal
+                pose[2,0] -= 25 # [mm]
 
             # if the block is not lined up with the grid
             if block_angle != 0:
@@ -305,12 +326,29 @@ class StateMachine():
             self.rxarm.set_positions(lsoln[1,:])
             rospy.sleep(1)
 
-            move = self.changeMoveSpeed(self.cobra)
+            int_pose = np.zeros([1,5])
+            int_pose = lsoln[1,:]
+            int_pose[1] = -35.95*D2R
+            int_pose[2] = 21.18*D2R
+            int_pose[3] = -59.59*D2R
+            int_pose[4] = 0.
+
+            move = self.changeMoveSpeed(int_pose)
             self.rxarm.set_moving_time(move)
             self.rxarm.set_accel_time(move/4)
-            
-            self.rxarm.set_positions(self.cobra)
+            self.rxarm.set_positions(int_pose)
             rospy.sleep(1)
+
+            # move = self.changeMoveSpeed(self.cobra)
+            # self.rxarm.set_moving_time(move)
+            # self.rxarm.set_accel_time(move/4)
+            # self.rxarm.set_positions(self.cobra)
+            # rospy.sleep(1)
+
+        ##                                                ##
+        ## THIS SECTION IS FOR WHEN THE GRIPPER IS CLOSED ## 
+        ##                                                ##
+        
 
         else:       # i.e. gripper is closed
         
@@ -328,35 +366,56 @@ class StateMachine():
             # solvning for solution to get approach position
 
             presoln, prepsi = kinematics.IK_geometric(math.pi/4, pre_pose)
+
+            int_pose = np.zeros([1,5])
+            int_pose = presoln[1,:]
+            int_pose[1] = -35.95*D2R
+            int_pose[2] = 21.18*D2R
+            int_pose[3] = -59.59*D2R
+            int_pose[4] = 0.
+
+            move = self.changeMoveSpeed(int_pose)
+            self.rxarm.set_moving_time(move)
+            self.rxarm.set_accel_time(move/4)
+            self.rxarm.set_positions(int_pose)
+            rospy.sleep(1)
+
             move = self.changeMoveSpeed(presoln[1,:])
             self.rxarm.set_moving_time(move)
             self.rxarm.set_accel_time(move/4)
             self.rxarm.set_positions(presoln[1,:])
             rospy.sleep(2)
 
-            
+            # this accounts for the increase in height needed to place a block without crashing it into the board or a
+            # target stack of blocks
             if prepsi == math.pi/2:
             
-                pose[2,0] += height
+                pose[2,0] += height*.75
             else:
-                pose[2,0] += height/2
+                pose[2,0] += height*.25
 
-
-            solns, solnpsi = kinematics.IK_geometric(prepsi, pose)
-
-            if solnpsi == prev_psi:
+            if prepsi == prev_psi:
                 pass
-            elif solnpsi == math.pi/2 and prev_psi == 0.:
-                pose[2,0] += 25 #[mm]
-            elif solnpsi == 0. and prev_psi == math.pi/2:
-                
+            elif prepsi == math.pi/2 and prev_psi == 0.:
+                pose[2,0] += 20 #[mm]
+            elif prepsi == 0. and prev_psi == math.pi/2:
+            
                 # trying to scale things based on the angle to account for the difference in ee position between vertical and horizontal
                 x_p = pose[0,0]
                 y_p = pose[1,0]
                 theta = math.atan2(y_p,x_p) - math.pi/2
-                scale = 0.2*theta/90
+                scale = 0.15*theta/90
+                print("scale: ")
+                print(scale)
                 pose[0,0] *= 1+scale
                 pose[1,0] *= 1 + (0.2 - scale)
+                print("horiz pose: ")
+                print(pose)
+                pose[2,0] += 2.5 # [mm]
+
+            solns, solnpsi = kinematics.IK_geometric(prepsi, pose)
+
+            
 
             move = self.changeMoveSpeed(solns[1,:])
             self.rxarm.set_moving_time(move)
@@ -375,12 +434,25 @@ class StateMachine():
             self.rxarm.set_positions(lsoln[1,:])
             rospy.sleep(1)
 
-            move = self.changeMoveSpeed(self.cobra)
-            rospy.sleep(1)
-            #print(move)
+            int_pose = np.zeros([1,5])
+            int_pose = lsoln[1,:]
+            int_pose[1] = -35.95*D2R
+            int_pose[2] = 21.18*D2R
+            int_pose[3] = -59.59*D2R
+            int_pose[4] = 0.
+
+            move = self.changeMoveSpeed(int_pose)
             self.rxarm.set_moving_time(move)
             self.rxarm.set_accel_time(move/4)
-            self.rxarm.set_positions(self.cobra)
+            self.rxarm.set_positions(int_pose)
+            rospy.sleep(1)
+
+            # move = self.changeMoveSpeed(self.cobra)
+            # rospy.sleep(1)
+            # #print(move)
+            # self.rxarm.set_moving_time(move)
+            # self.rxarm.set_accel_time(move/4)
+            # self.rxarm.set_positions(self.cobra)
 
             return solnpsi
 
@@ -568,18 +640,6 @@ class StateMachine():
         print(self.camera.num_blocks)
         # print("in armtonomy!")
         block_coordsXYZ = list(self.camera.block_coords)
-
-        # for elem in block_coordsXYZ:
-        #     print("color: " + elem.color)
-        #     print("xyz: " + str(elem.XYZ))
-        #     print("shape: " + elem.shape)
-        #     print("angle: " + str(elem.angle))
-        #     print("height: " + str(elem.height))
-        
-        #print(pre_block_coordsXYZ)
-        # this removes the first column of zeros that is necessary to not make numpy unhappy when hstacking stuff
-        #block_coordsXYZ = np.transpose(pre_block_coordsXYZ[:,1:np.shape(pre_block_coordsXYZ)[1]])
-        #print(block_coordsXYZ)
         
         def sort_by_norm(val):
         
@@ -587,12 +647,6 @@ class StateMachine():
         
         block_coordsXYZ.sort(key=sort_by_norm)
 
-        #for elem in block_coordsXYZ:
-        #     print("color: " + elem.color)
-            #print(np.linalg.norm(elem.XYZ))
-            #print("xyz: " + str(elem.XYZ))
-        #     print("shape: " + elem.shape)
-        #     print("angle: " + str(elem.angle))
         
         staq_height = 0.
         for elem in block_coordsXYZ:

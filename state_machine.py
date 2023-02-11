@@ -38,6 +38,7 @@ class StateMachine():
         self.next_state = "idle"
         self.waypoint_flag = False
         self.waypoints = [[0,0,0,0,0]]
+        self.event_selection = ""
         """  [-np.pi/2,       -0.5,      -0.3,            0.0,       0.0],
             [0.75*-np.pi/2,   0.5,      0.3,      0.0,       np.pi/2],
             [0.5*-np.pi/2,   -0.5,     -0.3,     np.pi / 2,     0.0],
@@ -107,6 +108,8 @@ class StateMachine():
             self.calibrate()
 
         if self.next_state == "autonomy":
+            while(self.event_selection == ""):
+                print("waiting for task input")
             self.autonomy()
 
 
@@ -220,14 +223,20 @@ class StateMachine():
         next = next_pose
         curr = self.rxarm.get_positions()
         diff = next - curr
-        weighted = np.multiply(diff,np.array([3.75,3.5,2,1.5,1.5]))
+        weighted = np.multiply(diff,np.array([3.75,3.5,2,.5,1.5]))
         norm = np.linalg.norm(weighted, ord=2)
         return norm/4
 
     def moveBlock(self, input_pose, height, prev_psi, block_angle=0):
         pose = np.zeros([6,1])
-        pose[0:3,0] = np.reshape( input_pose , (3,))
-        #print(pose)
+        a = np.copy(input_pose[0])
+        b = np.copy(input_pose[1])
+        c = np.copy(input_pose[2])
+        # pose[0:3,0] = np.reshape( input_pose , (3,))
+        pose[0] = a
+        pose[1] = b
+        pose[2] = c
+        # print(pose[2,0])
             #print(kinematics.IK_geometric(math.pi/4, pose))
             # # setting phi, theta, psi values -- keeping as zero for now b/c this shit no work!
             # # no change to pose because these values are already zero
@@ -241,13 +250,13 @@ class StateMachine():
 
             # arm pose after closing gripper on block
             leave_pose = np.copy(pose)
-            leave_pose[0,0] *= 0.9
-            leave_pose[1,0] *= 0.9
-            leave_pose[2,0] += 75 # [mm]
+            leave_pose[0,0] = pose[0,0]*0.9
+            leave_pose[1,0] = pose[1,0]*0.9
+            leave_pose[2,0] = pose[2,0] + 75 # [mm]
 
             # arm pose upon approach before dropping off or picking up block
             pre_pose = np.copy(pose)
-            pre_pose[2,0] += height # [mm]
+            pre_pose[2,0] = pose[2,0] + height # [mm]
 
             # if the block is not lined up with the grid, figure out the best ee oritentation for block pickup
             if block_angle != 0:
@@ -256,10 +265,11 @@ class StateMachine():
             
             # block lined up with grid
             else:
+
                 presoln, prepsi = kinematics.IK_geometric(math.pi/4, pre_pose)
 
             int_pose = np.zeros([1,5])
-            int_pose = presoln[1,:]
+            int_pose = np.copy(presoln[1,:])
             int_pose[1] = -35.95*D2R
             int_pose[2] = 21.18*D2R
             int_pose[3] = -59.59*D2R
@@ -289,13 +299,15 @@ class StateMachine():
                 #if prev_psi == math.pi/2:
 
                 # i actually think this is just to make the gripper pick up blocks closer to the ee center when ee is horizontal
+                print(pose[2,0])
                 pose[2,0] -= 25 # [mm]
+                print(pose[2,0])
 
             # if the block is not lined up with the grid
-            if block_angle != 0:
+            if block_angle != 0 and block_angle != 90:
                 
                 # movement to actually surround block with end effector --> if the block is not parallel with the grid
-                solns, solnpsi = kinematics.IK_geometric(prepsi, pose,block_angle)
+                solns, solnpsi = kinematics.IK_geometric(prepsi, pose, block_angle)
                 #print(solns)
             else:
                 # soln with block parallel to grid
@@ -311,7 +323,7 @@ class StateMachine():
 
             # pre leaving pose --> back up and lift a bit
             # if the block is not parallel
-            if block_angle != 0:
+            if block_angle != 0 and block_angle != 90:
 
                 lsoln, leavepsi = kinematics.IK_geometric(solnpsi, leave_pose, block_angle)
                 
@@ -388,7 +400,7 @@ class StateMachine():
 
             # this accounts for the increase in height needed to place a block without crashing it into the board or a
             # target stack of blocks
-            if prepsi == math.pi/2:
+            if np.abs(prepsi) == math.pi/2:
             
                 pose[2,0] += height*.75
             else:
@@ -396,9 +408,9 @@ class StateMachine():
 
             if prepsi == prev_psi:
                 pass
-            elif prepsi == math.pi/2 and prev_psi == 0.:
-                pose[2,0] += 20 #[mm]
-            elif prepsi == 0. and prev_psi == math.pi/2:
+            elif prepsi == np.abs(math.pi/2) and prev_psi == 0.:  
+                pose[2,0] += 10 #[mm]
+            elif prepsi == 0. and prev_psi == np.abs(math.pi/2):
             
                 # trying to scale things based on the angle to account for the difference in ee position between vertical and horizontal
                 x_p = pose[0,0]
@@ -623,114 +635,133 @@ class StateMachine():
         self.status_message = "State: Autonomy"
         self.next_state = "idle"
         prev_psi = 0
-        print("test pre block coords")
-        #print("there are: ", self.camera.num_blocks, " blocks!")
-        #self.camera.blockDetector(True)
         block_coordsXYZ = list(self.camera.block_coords)
-        #print(np.shape(pre_block_coordsXYZ)[1])
-        #print(pre_block_coordsXYZ)
+
 
         while (len(block_coordsXYZ) < self.camera.num_blocks):
-            print("num blocks: ", self.camera.num_blocks)
-            print("current length: ", len(block_coordsXYZ))
-            rospy.sleep(0.01)
             block_coordsXYZ = list(self.camera.block_coords)
         
-        #print(np.shape(pre_block_coordsXYZ)[1])
-        print(self.camera.num_blocks)
-        # print("in armtonomy!")
         block_coordsXYZ = list(self.camera.block_coords)
         
-        def sort_by_norm(val):
-        
-            return np.linalg.norm(val.XYZ)
-        
-        block_coordsXYZ.sort(key=sort_by_norm)
+        """
+        can start placing logic based on "self.event_selection" here
+        """
 
-        
-        staq_height = 0.
-        for elem in block_coordsXYZ:
-            #print(elem)
-            #print(" ")
-            x = elem.XYZ[0]
-            y = elem.XYZ[1]
-            z = elem.XYZ[2]
-            angle = elem.angle
-            shape = elem.shape
-            if x < -450 or x > 450 or y < -150 or y > 450 or z < -5:
-                print("passed point")
-                pass
-            else:
-                print("starting movement")
+        if (self.event_selection == "event 1"):
+            large_drop_pt_world = np.array([-375, -100, 0])
+            small_drop_pt_world = np.array([375, -100, 0])
+            for elem in block_coordsXYZ:
+                x = elem.XYZ[0]
+                y = elem.XYZ[1]
+                z = elem.XYZ[2]
+                elem.XYZ -= 10
+                angle = elem.angle
+                shape = elem.shape
                 prev_psi = self.moveBlock(elem.XYZ, elem.height, prev_psi, angle)
                 rospy.sleep(0.5)
-                
-                # ADDING SOME STUFF TO POTENTIALLY IMPROVE AUTONOMY
-                # Get depth reading at the desired placement x-y position
-                # CHECK THE VALUE OF z BEFORE RUNNING AUTONOMY - MIGHT NEED TO SUBTRACT 1000
 
-                #intrinsic = self.camera.intrinsic_matrix
-                #extrinsic = self.camera.extrinsic_matrix
+                if (elem.shape == "large"):
+                    prev_psi = self.moveBlock(large_drop_pt_world, elem.height, prev_psi)
+                    large_drop_pt_world[0] += 50
+                elif (elem.shape == "small"):
+                    prev_psi = self.moveBlock(small_drop_pt_world, elem.height, prev_psi)
+                    small_drop_pt_world[0] -= 50
 
-                ## GIVING UP ON THIS FOR NOW -- SEEMS LIKE A PARADOX 
-                # this if statements finds the z_world value of a specified point in pixel coordinates
-                # if self.camera.homography.size != 0:
+
+
+        if (self.event_selection == "event 5"):
+            def sort_by_norm(val):
+            
+                return np.linalg.norm(val.XYZ)
+            
+            block_coordsXYZ.sort(key=sort_by_norm)
+
+            
+            staq_height = 0.
+            for elem in block_coordsXYZ:
+                #print(elem)
+                #print(" ")
+                x = elem.XYZ[0]
+                y = elem.XYZ[1]
+                z = elem.XYZ[2]
+                print("z in autonomy: ", z)
+                elem.XYZ -= 10
+                angle = elem.angle
+                shape = elem.shape
+                if x < -450 or x > 450 or y < -150 or y > 450 or z < -5:
+                    print("passed point")
+                    pass
+                else:
+                    print("starting movement")
+                    prev_psi = self.moveBlock(elem.XYZ, elem.height, prev_psi, angle)
+                    rospy.sleep(0.5)
                     
-                #     # need to do the z measurement based off the x,y position because the pixel
-                #     # values do not change as the blocks stack, while the x,y positions do
-                drop_pt_world = np.array([[0],[425],[staq_height]]) 
-                    
+                    # ADDING SOME STUFF TO POTENTIALLY IMPROVE AUTONOMY
+                    # Get depth reading at the desired placement x-y position
+                    # CHECK THE VALUE OF z BEFORE RUNNING AUTONOMY - MIGHT NEED TO SUBTRACT 1000
 
-                #     drop_pt_cam = np.matmul(np.linalg.inv(extrinsic), drop_pt_world)
-                #     print(drop_pt_cam)
+                    #intrinsic = self.camera.intrinsic_matrix
+                    #extrinsic = self.camera.extrinsic_matrix
 
-
-                #     uv_trans = np.zeros([3,1])
-               
-                #     # CAN CUSTOMIZE THIS TO PICK ANY POINT ON THE BOARD OR CALCULATE A POINT TO PLACE THE BLOCK
-                    
-                #     # pixel coordinates in homography --> they are in this form arbitarily, we could pick pre-homography pixel coords to get
-                #     # depth reading from... i just did it because that way i can pick points from the calibrated video display
-                #     uv_hom = np.array([[820],[334],[1]])
-
-                #     # undoing hommography transform
-                #     uv_trans = np.matmul( np.linalg.inv(self.camera.homography) , uv_hom )
-                #     # print("uv_trans")
-                #     # print(uv_trans)
-                #     # print(" ")
-
-                #     # normalizing x and y pixel locations
-                #     uv_trans[0,0] /= uv_trans[2,0]
-                #     uv_trans[1,0] /= uv_trans[2,0]
-                #     uv_trans[2,0] = 1
-               
-                #     z = self.camera.DepthFrameRaw[int(uv_trans[1,0])][int(uv_trans[0,0])]
-                # #print(z)
-                #     cam_coords = z*np.matmul(np.linalg.inv(intrinsic), uv_trans)
-                #     #print("state machine: ")
-                #     #
-                #     print(cam_coords)
-                #     # print("z")
-                #     # print(z)
-                #     # print(" ")
-                             
-                #     world_coords = np.matmul(extrinsic, np.append(np.array(cam_coords),1))
-                   
-                #     # the depth reading in world coordinates of the specific point of interest for block placement
-                #     z_w = world_coords[2]
-
-                #     print("world coords")
-                #     print(world_coords)
-                #     print(" ")
-                ## GIVING UP ON THIS FOR NOW -- SEEMS LIKE A PARADOX 
-                if shape == "large":
-                    prev_psi = self.moveBlock(np.array([drop_pt_world[0],drop_pt_world[1],staq_height]), elem.height, prev_psi)
-                if shape == "small":
-                    prev_psi = self.moveBlock(np.array([drop_pt_world[0],drop_pt_world[1],staq_height]), elem.height, prev_psi)
+                    ## GIVING UP ON THIS FOR NOW -- SEEMS LIKE A PARADOX 
+                    # this if statements finds the z_world value of a specified point in pixel coordinates
+                    # if self.camera.homography.size != 0:
                         
+                    #     # need to do the z measurement based off the x,y position because the pixel
+                    #     # values do not change as the blocks stack, while the x,y positions do
+                    drop_pt_world = np.array([[-150],[300],[staq_height]]) 
+                        
+
+                    #     drop_pt_cam = np.matmul(np.linalg.inv(extrinsic), drop_pt_world)
+                    #     print(drop_pt_cam)
+
+
+                    #     uv_trans = np.zeros([3,1])
                 
-                rospy.sleep(0.5)
-                staq_height += elem.height
+                    #     # CAN CUSTOMIZE THIS TO PICK ANY POINT ON THE BOARD OR CALCULATE A POINT TO PLACE THE BLOCK
+                        
+                    #     # pixel coordinates in homography --> they are in this form arbitarily, we could pick pre-homography pixel coords to get
+                    #     # depth reading from... i just did it because that way i can pick points from the calibrated video display
+                    #     uv_hom = np.array([[820],[334],[1]])
+
+                    #     # undoing hommography transform
+                    #     uv_trans = np.matmul( np.linalg.inv(self.camera.homography) , uv_hom )
+                    #     # print("uv_trans")
+                    #     # print(uv_trans)
+                    #     # print(" ")
+
+                    #     # normalizing x and y pixel locations
+                    #     uv_trans[0,0] /= uv_trans[2,0]
+                    #     uv_trans[1,0] /= uv_trans[2,0]
+                    #     uv_trans[2,0] = 1
+                
+                    #     z = self.camera.DepthFrameRaw[int(uv_trans[1,0])][int(uv_trans[0,0])]
+                    # #print(z)
+                    #     cam_coords = z*np.matmul(np.linalg.inv(intrinsic), uv_trans)
+                    #     #print("state machine: ")
+                    #     #
+                    #     print(cam_coords)
+                    #     # print("z")
+                    #     # print(z)
+                    #     # print(" ")
+                                
+                    #     world_coords = np.matmul(extrinsic, np.append(np.array(cam_coords),1))
+                    
+                    #     # the depth reading in world coordinates of the specific point of interest for block placement
+                    #     z_w = world_coords[2]
+
+                    #     print("world coords")
+                    #     print(world_coords)
+                    #     print(" ")
+                    ## GIVING UP ON THIS FOR NOW -- SEEMS LIKE A PARADOX 
+                    if shape == "large":
+                        prev_psi = self.moveBlock(np.array([drop_pt_world[0],drop_pt_world[1],staq_height]), elem.height, prev_psi)
+                    if shape == "small":
+                        prev_psi = self.moveBlock(np.array([drop_pt_world[0],drop_pt_world[1],staq_height]), elem.height, prev_psi)
+                            
+                    
+                    rospy.sleep(0.5)
+                    staq_height += elem.height
 
 
                 

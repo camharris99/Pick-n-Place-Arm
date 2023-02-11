@@ -182,6 +182,7 @@ def IK_geometric(psi, pose, block_angle = 0):
     x_c = pose[0,0]
     y_c = pose[1,0]
     z_c = pose[2,0]
+    # print("kinematics z_c: ", z_c)
     d_1 = 103.91 # [mm]
     l_2 = 205.73 # [mm]
     d_2 = 50 # [mm]
@@ -329,7 +330,7 @@ def IK_geometric(psi, pose, block_angle = 0):
         theta_41_2 = alpha_3 + psi - 10*D2R
         theta_42_2 = alpha_4 + psi - 10*D2R
     
-    elif psi == math.pi/2:
+    elif np.abs(psi) == math.pi/2:
 
         if r > 200:
             theta_21c -= 2*D2R

@@ -118,6 +118,17 @@ class Gui(QMainWindow):
         self.ui.btnUser7.clicked.connect(partial(nxt_if_arm_init, 'set_close_waypoint'))
         self.ui.btnUser8.setText('Clear Waypoints Array')
         self.ui.btnUser8.clicked.connect(partial(nxt_if_arm_init, 'clear_waypoints'))
+        self.ui.btnUser9.setText('Autonomy Event 1')
+        self.ui.btnUser9.clicked.connect(lambda: self.set_event1())
+        self.ui.btnUser10.setText('Autonomy Event 2')
+        self.ui.btnUser10.clicked.connect(lambda: self.set_event2())
+        self.ui.btnUser11.setText('Autonomy Event 3')
+        self.ui.btnUser11.clicked.connect(lambda: self.set_event3())
+        self.ui.btnUser12.setText('Autonomy Event 4')
+        self.ui.btnUser12.clicked.connect(lambda: self.set_event4())
+        self.ui.btnUser13.setText('Autonomy Event 5')
+        self.ui.btnUser13.clicked.connect(lambda: self.set_event5())
+
     
         # Slidersworld
         for sldr in self.joint_sliders:
@@ -469,6 +480,21 @@ class Gui(QMainWindow):
         self.ui.chk_autonomy.setChecked(False)
         self.rxarm.enable_torque()
         self.sm.set_next_state('initialize_rxarm')
+    
+    def set_event1(self):
+        self.sm.event_selection = "event 1"
+
+    def set_event2(self):
+        self.sm.event_selection = "event 2"
+
+    def set_event3(self):
+        self.sm.event_selection = "event 3"
+
+    def set_event4(self):
+        self.sm.event_selection = "event 4"
+
+    def set_event5(self):
+        self.sm.event_selection = "event 5"
 
 
 ### TODO: Add ability to parse POX config file as well

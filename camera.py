@@ -21,7 +21,7 @@ class Block():
     @brief This class describes a shape in the workspace
     """
 
-    def __init__(self, color, xyz, shape, angle, height):
+    def __init__(self, color, xyz, shape, angle, height, stacked):
         """!
         @brief Constructs an instance of a block object
         """
@@ -31,6 +31,7 @@ class Block():
         self.color = color
         self.angle = angle
         self.height = height
+        self.stacked = stacked
 
     # def assignXYZ(self):
     #     """!
@@ -398,12 +399,17 @@ class Camera():
                 del contours[i]
                 continue
 
+            stacked = False
             if (contour_area < 900):
                 size = "small"
                 height = 25
+                if (world_coords[2] > height):
+                    stacked = True
             else:
                 size = "large"
                 height = 38
+                if (world_coords[2] > height):
+                    stacked = True
 
             # add the current moment to the front of the list of moments
             moments.insert(0, moment)
@@ -419,8 +425,9 @@ class Camera():
             # store the last element of the world coordinates as the orientation of the block
             world_coords[-1] = orientation
             world_coords = np.expand_dims(world_coords, axis=1)
+            
 
-            block_obj = Block(color, world_coords[0:3], size, world_coords[3], height)
+            block_obj = Block(color, world_coords[0:3], size, world_coords[3], height, stacked)
 
             # add the world coordinates of the current contour to self.block_coords
             self.block_coords.append(block_obj)
@@ -431,7 +438,9 @@ class Camera():
                 # draw the contour using the rectangle of minimum area
                 cv2.drawContours(image,[box],0,contour_color,2)
                 cv2.circle(image, (u,v), radius = 5, color=(0,0,0), thickness=-1) 
-                cv2.putText(image, str(cv2.contourArea(contours[i])), (box[2,0],box[2,1]), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (36,255,12), 2)
+                # cv2.putText(image, str(cv2.contourArea(contours[i])), (box[2,0],box[2,1]), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (36,255,12), 2)
+                cv2.putText(image, str(stacked), (box[2,0],box[2,1]), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (36,255,12), 2)
+
 
         # print(self.block_coords)
         return image, moments, contours

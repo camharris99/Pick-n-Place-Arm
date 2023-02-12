@@ -299,9 +299,9 @@ class StateMachine():
                 #if prev_psi == math.pi/2:
 
                 # i actually think this is just to make the gripper pick up blocks closer to the ee center when ee is horizontal
-                print(pose[2,0])
+                #print(pose[2,0])
                 pose[2,0] -= 25 # [mm]
-                print(pose[2,0])
+                #print(pose[2,0])
 
             # if the block is not lined up with the grid
             if block_angle != 0 and block_angle != 90:
@@ -400,30 +400,53 @@ class StateMachine():
 
             # this accounts for the increase in height needed to place a block without crashing it into the board or a
             # target stack of blocks
+            # vertical end effector orientation:
             if np.abs(prepsi) == math.pi/2:
             
-                pose[2,0] += height*.75
+                pose[2,0] += height*.6
+            
+            # horizontal end effector orientation:
             else:
-                pose[2,0] += height*.25
+                pose[2,0] += height*.5
+
+            #print(prev_psi)
+            #print(" ")
+            #print("prepsi: " + str(prepsi))
 
             if prepsi == prev_psi:
                 pass
+
+            # horizontal to vertical end effector  orientatin change
             elif prepsi == np.abs(math.pi/2) and prev_psi == 0.:  
                 pose[2,0] += 10 #[mm]
-            elif prepsi == 0. and prev_psi == np.abs(math.pi/2):
+
+            # vertical to horizontal end effector change
+            elif prepsi == 0.: # and prev_psi == np.abs(math.pi/2):
             
                 # trying to scale things based on the angle to account for the difference in ee position between vertical and horizontal
                 x_p = np.copy(pose[0,0])
                 y_p = np.copy(pose[1,0])
-                theta = math.atan2(y_p,x_p) - math.pi/2
+                theta = R2D * (math.atan2(y_p,x_p) - math.pi/2)
+                print("theta: " + str(theta))
                 scale = 0.15*theta/90
-                print("scale: ")
-                print(scale)
+                #print("scale: ")
+                #print(scale)
                 pose[0,0] *= 1+scale
-                pose[1,0] *= 1 + (0.2 - scale)
-                print("horiz pose: ")
-                print(pose)
+                pose[1,0] *= 1 + (0.15 - scale)
+                #print("horiz pose: ")
+                #print(pose)
                 pose[2,0] += 2.5 # [mm]
+                
+                horz_pose = pose.copy()
+                horz_pose[2,0] = pre_pose[2,0]
+
+                horiz_soln, horz_psi = kinematics.IK_geometric(prepsi, horz_pose) 
+
+                move = self.changeMoveSpeed(horiz_soln[1,:])
+                self.rxarm.set_moving_time(move)
+                self.rxarm.set_accel_time(move/4)
+                self.rxarm.set_positions(horiz_soln[1,:])
+                rospy.sleep(1)
 
             solns, solnpsi = kinematics.IK_geometric(prepsi, pose)
 
@@ -466,7 +489,51 @@ class StateMachine():
             # self.rxarm.set_accel_time(move/4)
             # self.rxarm.set_positions(self.cobra)
 
-            return solnpsi
+        return solnpsi
+
+    def sweep_stack(self, input_pose):
+        self.rxarm.close_gripper()
+
+        pre_swipe_sol, prepsi = kinematics.IK_geometric(math.pi/4, input_pose)
+
+        post_swipe_sol = np.copy(pre_swipe_sol)
+
+        if (input_pose[0] <= 0):
+            pre_swipe_sol[1,0] += 15 * D2R
+            post_swipe_sol[1,0] -= 10 * D2R
+        else:
+            pre_swipe_sol[1,0] -= 15 * D2R
+            post_swipe_sol[1,0] += 10 * D2R
+
+        print("pre swipe location")
+
+        move = self.changeMoveSpeed(pre_swipe_sol[1,:])
+        self.rxarm.set_moving_time(move)
+        self.rxarm.set_accel_time(move/4)
+        self.rxarm.set_positions(pre_swipe_sol[1,:])
+        rospy.sleep(1)
+
+        print("post swipe")
+
+        move = 4*self.changeMoveSpeed(post_swipe_sol[1,:])
+        self.rxarm.set_moving_time(move)
+        self.rxarm.set_accel_time(move/4)
+        self.rxarm.set_positions(post_swipe_sol[1,:])
+        rospy.sleep(1)
+
+        self.rxarm.open_gripper()
+
+        leave_sol = np.copy(post_swipe_sol)
+        leave_sol[1,1] -= 15 * D2R
+
+        move = self.changeMoveSpeed(leave_sol[1,:])
+        self.rxarm.set_moving_time(move)
+        self.rxarm.set_accel_time(move/4)
+        self.rxarm.set_positions(leave_sol[1,:])
+        rospy.sleep(1)
+
+        pass
+
 
 
     def calibrate(self):
@@ -634,7 +701,7 @@ class StateMachine():
         """
         self.status_message = "State: Autonomy"
         self.next_state = "idle"
-        prev_psi = 0
+        prev_psi = 0.
         block_coordsXYZ = list(self.camera.block_coords)
 
         while (len(block_coordsXYZ) < self.camera.num_blocks):
@@ -647,13 +714,13 @@ class StateMachine():
 
         def sort_by_norm(val):
                     return np.linalg.norm(val.XYZ)
+        def sort_by_stack(val):
+                    return val.stacked
 
         if (self.event_selection == "event 1"):            
             block_coordsXYZ.sort(key=sort_by_norm)
             large_drop_pt_world = np.array([-375, -100, 0])
             small_drop_pt_world = np.array([375, -100, 0])
-
-            block_coordsXYZ.sort(key=sort_by_norm)
 
             for elem in block_coordsXYZ:
                 x = elem.XYZ[0]
@@ -743,11 +810,23 @@ class StateMachine():
                     re do the image to make sure we deal with all the blocks
             """
 
-            block_coordsXYZ.sort(key=sort_by_norm)
+            block_coordsXYZ.sort(key=sort_by_stack)
+            swiper_height = 40
+
+            # knock down all stacked
+            for elem in block_coordsXYZ:
+                if (elem.stacked == False):
+                    continue
+                x = elem.XYZ[0]
+                y = elem.XYZ[1]
+                z = np.copy(elem.XYZ[2])
+                elem.XYZ[2] = swiper_height
+                self.sweep_stack(elem.XYZ)
+
+            rospy.sleep(10)
+
             large_drop_pt_world = np.array([-375, -100, 0])
             small_drop_pt_world = np.array([375, -100, 0])
-
-            block_coordsXYZ.sort(key=sort_by_norm)
 
             for elem in block_coordsXYZ:
                 x = elem.XYZ[0]
@@ -800,6 +879,7 @@ class StateMachine():
                     pass
                 else:
                     print("starting movement")
+                    #print(prev_psi)
                     prev_psi = self.moveBlock(elem.XYZ, elem.height, prev_psi, angle)
                     rospy.sleep(0.5)
                     
@@ -816,7 +896,7 @@ class StateMachine():
                         
                     #     # need to do the z measurement based off the x,y position because the pixel
                     #     # values do not change as the blocks stack, while the x,y positions do
-                    drop_pt_world = np.array([[-150],[300],[staq_height]]) 
+                    drop_pt_world = np.array([[204],[174],[staq_height]]) 
                         
 
                     #     drop_pt_cam = np.matmul(np.linalg.inv(extrinsic), drop_pt_world)

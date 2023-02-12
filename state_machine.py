@@ -375,7 +375,7 @@ class StateMachine():
             # adding offset to pre drop off position to ensure no bonks
             pre_pose[2,0] += 60 # [mm]
 
-            # solvning for solution to get approach position
+            # solving for solution to get approach position
 
             presoln, prepsi = kinematics.IK_geometric(math.pi/4, pre_pose)
 
@@ -637,17 +637,20 @@ class StateMachine():
         prev_psi = 0
         block_coordsXYZ = list(self.camera.block_coords)
 
-
         while (len(block_coordsXYZ) < self.camera.num_blocks):
             block_coordsXYZ = list(self.camera.block_coords)
         
         block_coordsXYZ = list(self.camera.block_coords)
-        
         """
         can start placing logic based on "self.event_selection" here
         """
 
         if (self.event_selection == "event 1"):
+            def sort_by_norm(val):
+            
+                return np.linalg.norm(val.XYZ)
+            
+            block_coordsXYZ.sort(key=sort_by_norm)
             large_drop_pt_world = np.array([-375, -100, 0])
             small_drop_pt_world = np.array([375, -100, 0])
             for elem in block_coordsXYZ:
@@ -657,16 +660,22 @@ class StateMachine():
                 elem.XYZ -= 10
                 angle = elem.angle
                 shape = elem.shape
+                # print(elem.shape)
                 prev_psi = self.moveBlock(elem.XYZ, elem.height, prev_psi, angle)
                 rospy.sleep(0.5)
 
                 if (elem.shape == "large"):
                     prev_psi = self.moveBlock(large_drop_pt_world, elem.height, prev_psi)
-                    large_drop_pt_world[0] += 50
+                    large_drop_pt_world[0] += 60
                 elif (elem.shape == "small"):
                     prev_psi = self.moveBlock(small_drop_pt_world, elem.height, prev_psi)
                     small_drop_pt_world[0] -= 50
-
+                # block_coordsXYZ = list(self.camera.block_coords)       # something I tried to update the list block coords each time through the loop. Would need to modify things further to make this work
+                # def sort_by_norm(val):
+                #     return np.linalg.norm(val.XYZ)
+                # block_coordsXYZ.sort(key=sort_by_norm)
+                # for x in range(len(block_coordsXYZ)):
+                #     print("block coords are",block_coordsXYZ[x].XYZ)
 
 
         if (self.event_selection == "event 5"):

@@ -398,7 +398,7 @@ class Camera():
                 del contours[i]
                 continue
 
-            if (contour_area < 800):
+            if (contour_area < 900):
                 size = "small"
                 height = 25
             else:
@@ -408,16 +408,10 @@ class Camera():
             # add the current moment to the front of the list of moments
             moments.insert(0, moment)
 
-            # draw a circle on the image at the centroid
-            cv2.circle(image, (u,v), radius = 5, color=(0,0,0), thickness=-1) 
-
             # find the rectangle with the minimum area of the contour, along with the bounding points
             rect = cv2.minAreaRect(contours[i])
             box = cv2.boxPoints(rect)
             box = np.intp(box)
-
-            # draw the contour using the rectangle of minimum area
-            cv2.drawContours(image,[box],0,contour_color,2)
 
             # store orientation to flat of the contour
             orientation = rect[2]
@@ -432,10 +426,14 @@ class Camera():
             self.block_coords.append(block_obj)
 
             # write the contour area on the image
-            cv2.putText(image, str(cv2.contourArea(contours[i])), (box[2,0],box[2,1]), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (36,255,12), 2)
+            # draw a circle on the image at the centroid
+            if (autonomy_flag == False):
+                # draw the contour using the rectangle of minimum area
+                cv2.drawContours(image,[box],0,contour_color,2)
+                cv2.circle(image, (u,v), radius = 5, color=(0,0,0), thickness=-1) 
+                cv2.putText(image, str(cv2.contourArea(contours[i])), (box[2,0],box[2,1]), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (36,255,12), 2)
 
         # print(self.block_coords)
-
         return image, moments, contours
 
     def blockDetector(self, autonomy_flag):
@@ -448,17 +446,23 @@ class Camera():
         img_hsv = cv2.cvtColor(self.VideoFrame.copy(), cv2.COLOR_RGB2HSV)
         # self.sliders(img_hsv)
         self.block_coords = []
+
         contoured_image, red_moments, red_contours = self.mask_and_contour(img_hsv, "red", autonomy_flag)
         contoured_image, green_moments, green_contours = self.mask_and_contour(img_hsv, "green", autonomy_flag)
         contoured_image, blue_moments, blue_contours = self.mask_and_contour(img_hsv, "blue", autonomy_flag)
         contoured_image, purple_moments, purple_contours = self.mask_and_contour(img_hsv, "purple", autonomy_flag)
         contoured_image, yellow_moments, yellow_contours = self.mask_and_contour(img_hsv, "yellow", autonomy_flag)
         contoured_image, orange_moments, orange_contours = self.mask_and_contour(img_hsv, "orange", autonomy_flag)
-        # grid_box = np.array([[-450,-150], [-450, 450], [450, 450], [450, -150]])
+
         self.num_blocks = len(red_contours) + len(green_contours) + len(blue_contours) + len(purple_contours) \
             + len(yellow_contours) + len(orange_contours)
         self.ContourFrame = cv2.cvtColor(contoured_image, cv2.COLOR_HSV2RGB)
+
+        if (autonomy_flag == True):
+            rospy.sleep(0.5)
+        
         pass
+
 
     def detectBlocksInDepthImage(self):
         """!

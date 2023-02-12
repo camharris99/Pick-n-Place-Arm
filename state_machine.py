@@ -223,7 +223,7 @@ class StateMachine():
         next = next_pose
         curr = self.rxarm.get_positions()
         diff = next - curr
-        weighted = np.multiply(diff,np.array([3.75,3.5,2,.5,1.5]))
+        weighted = np.multiply(diff,np.array([3,3.5,2,.5,1.5]))
         norm = np.linalg.norm(weighted, ord=2)
         return norm/4
 
@@ -292,8 +292,8 @@ class StateMachine():
             # if the end effector is horizontal then make the x and y coordinate of the leaving pose the same as upon approach (i.e. only movement 
             # in the z direction when leaving)
             if prepsi == 0:
-                leave_pose[0,0] = pre_pose[0,0]
-                leave_pose[1,0] = pre_pose[1,0]
+                leave_pose[0,0] = np.copy(pre_pose[0,0])
+                leave_pose[1,0] = np.copy(pre_pose[1,0])
                 
                 # this accounts for the difference in the end effector z location between when the end effector is horizontal vs vertical
                 #if prev_psi == math.pi/2:
@@ -339,7 +339,7 @@ class StateMachine():
             rospy.sleep(1)
 
             int_pose = np.zeros([1,5])
-            int_pose = lsoln[1,:]
+            int_pose = np.copy(lsoln[1,:])
             int_pose[1] = -35.95*D2R
             int_pose[2] = 21.18*D2R
             int_pose[3] = -59.59*D2R
@@ -380,7 +380,7 @@ class StateMachine():
             presoln, prepsi = kinematics.IK_geometric(math.pi/4, pre_pose)
 
             int_pose = np.zeros([1,5])
-            int_pose = presoln[1,:]
+            int_pose = np.copy(presoln[1,:])
             int_pose[1] = -35.95*D2R
             int_pose[2] = 21.18*D2R
             int_pose[3] = -59.59*D2R
@@ -413,8 +413,8 @@ class StateMachine():
             elif prepsi == 0. and prev_psi == np.abs(math.pi/2):
             
                 # trying to scale things based on the angle to account for the difference in ee position between vertical and horizontal
-                x_p = pose[0,0]
-                y_p = pose[1,0]
+                x_p = np.copy(pose[0,0])
+                y_p = np.copy(pose[1,0])
                 theta = math.atan2(y_p,x_p) - math.pi/2
                 scale = 0.15*theta/90
                 print("scale: ")
@@ -447,7 +447,7 @@ class StateMachine():
             rospy.sleep(1)
 
             int_pose = np.zeros([1,5])
-            int_pose = lsoln[1,:]
+            int_pose = np.copy(lsoln[1,:])
             int_pose[1] = -35.95*D2R
             int_pose[2] = 21.18*D2R
             int_pose[3] = -59.59*D2R
@@ -645,38 +645,136 @@ class StateMachine():
         can start placing logic based on "self.event_selection" here
         """
 
-        if (self.event_selection == "event 1"):
-            def sort_by_norm(val):
-            
-                return np.linalg.norm(val.XYZ)
-            
+        def sort_by_norm(val):
+                    return np.linalg.norm(val.XYZ)
+
+        if (self.event_selection == "event 1"):            
             block_coordsXYZ.sort(key=sort_by_norm)
             large_drop_pt_world = np.array([-375, -100, 0])
             small_drop_pt_world = np.array([375, -100, 0])
+
+            block_coordsXYZ.sort(key=sort_by_norm)
+
             for elem in block_coordsXYZ:
                 x = elem.XYZ[0]
                 y = elem.XYZ[1]
                 z = elem.XYZ[2]
-                elem.XYZ -= 10
+                elem.XYZ[2] -= 10
                 angle = elem.angle
                 shape = elem.shape
-                # print(elem.shape)
                 prev_psi = self.moveBlock(elem.XYZ, elem.height, prev_psi, angle)
                 rospy.sleep(0.5)
 
                 if (elem.shape == "large"):
                     prev_psi = self.moveBlock(large_drop_pt_world, elem.height, prev_psi)
-                    large_drop_pt_world[0] += 60
+                    if (large_drop_pt_world[0] >= -175):
+                        large_drop_pt_world[2] += elem.height
+                    else:
+                        large_drop_pt_world[0] += 60
                 elif (elem.shape == "small"):
                     prev_psi = self.moveBlock(small_drop_pt_world, elem.height, prev_psi)
-                    small_drop_pt_world[0] -= 50
-                # block_coordsXYZ = list(self.camera.block_coords)       # something I tried to update the list block coords each time through the loop. Would need to modify things further to make this work
-                # def sort_by_norm(val):
-                #     return np.linalg.norm(val.XYZ)
-                # block_coordsXYZ.sort(key=sort_by_norm)
-                # for x in range(len(block_coordsXYZ)):
-                #     print("block coords are",block_coordsXYZ[x].XYZ)
+                    if (small_drop_pt_world[0] <= 175):
+                        small_drop_pt_world[2] -= elem.height
+                    else:
+                        small_drop_pt_world[0] -= 40
 
+            # now that all is done, lets deal with any remaining stacks
+            remaining_blocks = 1000
+            while (remaining_blocks > 0):
+                print("starting stack detection")
+                self.camera.blockDetector(True)
+                block_coordsXYZ = list(self.camera.block_coords)
+
+                while (len(block_coordsXYZ) < self.camera.num_blocks):
+                    block_coordsXYZ = list(self.camera.block_coords)
+
+                for i in range(len(block_coordsXYZ)-1, -1, -1):
+                    x = block_coordsXYZ[i].XYZ[0]
+                    y = block_coordsXYZ[i].XYZ[1]
+                    z = block_coordsXYZ[i].XYZ[2]
+
+                    if (y < 0):
+                        del block_coordsXYZ[i]
+                        if (len(block_coordsXYZ) == 0):
+                            # print("no stacks left!")
+                            remaining_blocks = 0
+                        # print("block coord deleted: ", i)
+                        # print("current block_coord length: ", len(block_coordsXYZ))
+                        continue
+
+                    block_coordsXYZ[i].XYZ[2] -= 10
+                    angle = block_coordsXYZ[i].angle
+                    shape = block_coordsXYZ[i].shape
+                    prev_psi = self.moveBlock(block_coordsXYZ[i].XYZ, block_coordsXYZ[i].height, prev_psi, angle)
+                    rospy.sleep(0.5)
+
+                    if (shape == "large"):
+                        prev_psi = self.moveBlock(large_drop_pt_world, block_coordsXYZ[i].height, prev_psi)
+                        if (large_drop_pt_world[0] >= -175):
+                            large_drop_pt_world[2] += block_coordsXYZ[i].height
+                        else:
+                            large_drop_pt_world[0] += 60
+                    elif (shape == "small"):
+                        prev_psi = self.moveBlock(small_drop_pt_world, block_coordsXYZ[i].height, prev_psi)
+                        if (small_drop_pt_world[0] <= 175):
+                            small_drop_pt_world[2] -= block_coordsXYZ[i].height
+                        else:
+                            small_drop_pt_world[0] -= 40
+                    
+                    else:
+                        print("stacks found!")
+
+                pass
+            
+        if (self.event_selection == "event 2"):
+            pass
+        
+        if (self.event_selection == "event 3"):          
+            """
+            idea to build this event:
+                start with just level 2... 
+                    start with finding any "likely stacks" and knock them over
+                    find all blocks and sort them into two lists (large and small blocks)
+                    sort the lists into ROYGBV order
+                    use same pre-determined line locations as in event 1
+                once level 2 is figured out...
+                    detect if there are any blocks in the line we want to place at
+                    if there are, move them to some location where we can pick them up
+                    re do the image to make sure we deal with all the blocks
+            """
+
+            block_coordsXYZ.sort(key=sort_by_norm)
+            large_drop_pt_world = np.array([-375, -100, 0])
+            small_drop_pt_world = np.array([375, -100, 0])
+
+            block_coordsXYZ.sort(key=sort_by_norm)
+
+            for elem in block_coordsXYZ:
+                x = elem.XYZ[0]
+                y = elem.XYZ[1]
+                z = elem.XYZ[2]
+                elem.XYZ[2] -= 10
+                angle = elem.angle
+                shape = elem.shape
+                prev_psi = self.moveBlock(elem.XYZ, elem.height, prev_psi, angle)
+                rospy.sleep(0.5)
+
+                if (elem.shape == "large"):
+                    prev_psi = self.moveBlock(large_drop_pt_world, elem.height, prev_psi)
+                    if (large_drop_pt_world[0] >= -175):
+                        large_drop_pt_world[2] += elem.height
+                    else:
+                        large_drop_pt_world[0] += 60
+                elif (elem.shape == "small"):
+                    prev_psi = self.moveBlock(small_drop_pt_world, elem.height, prev_psi)
+                    if (small_drop_pt_world[0] <= 175):
+                        small_drop_pt_world[2] -= elem.height
+                    else:
+                        small_drop_pt_world[0] -= 40
+
+
+        if (self.event_selection == "event 4"):
+            pass
 
         if (self.event_selection == "event 5"):
             def sort_by_norm(val):
@@ -694,7 +792,7 @@ class StateMachine():
                 y = elem.XYZ[1]
                 z = elem.XYZ[2]
                 print("z in autonomy: ", z)
-                elem.XYZ -= 10
+                elem.XYZ[2] -= 10
                 angle = elem.angle
                 shape = elem.shape
                 if x < -450 or x > 450 or y < -150 or y > 450 or z < -5:

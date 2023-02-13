@@ -228,6 +228,15 @@ class StateMachine():
         return norm/4
 
     def moveBlock(self, input_pose, height, prev_psi, block_angle=0):
+        """!
+        @brief move the block from one location to another
+
+        @param input_pose The xyz phi theta psi coordinates of the desired End effector location
+        @param The height of the block being moved
+        @param The psi angle of the end effector during the previous moveBlock call
+        @param block_angle Optional parameter that allows us to set theta_5 
+
+        """
         pose = np.zeros([6,1])
         a = np.copy(input_pose[0])
         b = np.copy(input_pose[1])
@@ -261,12 +270,12 @@ class StateMachine():
             # if the block is not lined up with the grid, figure out the best ee oritentation for block pickup
             if block_angle != 0:
 
-                presoln, prepsi = kinematics.IK_geometric(math.pi/4, pre_pose, block_angle)
+                presoln, prepsi = kinematics.IK_geometric(math.pi/4, pre_pose, self.GripFlag, block_angle)
             
             # block lined up with grid
             else:
 
-                presoln, prepsi = kinematics.IK_geometric(math.pi/4, pre_pose)
+                presoln, prepsi = kinematics.IK_geometric(math.pi/4, pre_pose, self.GripFlag)
 
             int_pose = np.zeros([1,5])
             int_pose = np.copy(presoln[1,:])
@@ -300,18 +309,24 @@ class StateMachine():
 
                 # i actually think this is just to make the gripper pick up blocks closer to the ee center when ee is horizontal
                 #print(pose[2,0])
-                pose[2,0] -= 25 # [mm]
+
+                # small block
+                if height == 25:
+                    pose[2,0] -= 16
+                # large block
+                elif height == 38: 
+                    pose[2,0] -= 18 # [mm]
                 #print(pose[2,0])
 
             # if the block is not lined up with the grid
             if block_angle != 0 and block_angle != 90:
                 
                 # movement to actually surround block with end effector --> if the block is not parallel with the grid
-                solns, solnpsi = kinematics.IK_geometric(prepsi, pose, block_angle)
+                solns, solnpsi = kinematics.IK_geometric(prepsi, pose, self.GripFlag, block_angle)
                 #print(solns)
             else:
                 # soln with block parallel to grid
-                solns, solnpsi = kinematics.IK_geometric(prepsi, pose)
+                solns, solnpsi = kinematics.IK_geometric(prepsi, pose, self.GripFlag)
 
             move = self.changeMoveSpeed(solns[1,:])
             self.rxarm.set_moving_time(move)
@@ -325,12 +340,12 @@ class StateMachine():
             # if the block is not parallel
             if block_angle != 0 and block_angle != 90:
 
-                lsoln, leavepsi = kinematics.IK_geometric(solnpsi, leave_pose, block_angle)
+                lsoln, leavepsi = kinematics.IK_geometric(solnpsi, leave_pose, self.GripFlag, block_angle)
                 
             # if the block is parallel
             else:
 
-                lsoln, leavepsi = kinematics.IK_geometric(solnpsi, leave_pose)
+                lsoln, leavepsi = kinematics.IK_geometric(solnpsi, leave_pose, self.GripFlag)
                 
             move = self.changeMoveSpeed(lsoln[1,:])
             self.rxarm.set_moving_time(move)
@@ -377,7 +392,7 @@ class StateMachine():
 
             # solving for solution to get approach position
 
-            presoln, prepsi = kinematics.IK_geometric(math.pi/4, pre_pose)
+            presoln, prepsi = kinematics.IK_geometric(math.pi/4, pre_pose, self.GripFlag)
 
             # offset to ensure the grabber doesn't knock over blocks when it leaves from stacking
             if prepsi == math.pi/2:
@@ -413,7 +428,7 @@ class StateMachine():
             
             # horizontal end effector orientation:
             else:
-                pose[2,0] += height*.45
+                pose[2,0] += height*.55
 
                 if height == 25:
                     pose[2,0] -= 7
@@ -457,7 +472,7 @@ class StateMachine():
             #     self.rxarm.set_positions(horiz_soln[1,:])
             #     rospy.sleep(1)
 
-            solns, solnpsi = kinematics.IK_geometric(prepsi, pose)
+            solns, solnpsi = kinematics.IK_geometric(prepsi, pose, self.GripFlag)
 
             
 
@@ -468,9 +483,9 @@ class StateMachine():
             rospy.sleep(2.5)
             self.rxarm.open_gripper()
             self.GripFlag = True
-
+            print("z: " + str(pose[2,0]))
             # pre leaving pose --> back up and lift a bit
-            lsoln, leavepsi = kinematics.IK_geometric(solnpsi, leave_pose)
+            lsoln, leavepsi = kinematics.IK_geometric(solnpsi, leave_pose, self.GripFlag)
 
             move = self.changeMoveSpeed(lsoln[1,:])
             self.rxarm.set_moving_time(move)
@@ -503,7 +518,7 @@ class StateMachine():
     def sweep_stack(self, input_pose):
         self.rxarm.close_gripper()
 
-        pre_swipe_sol, prepsi = kinematics.IK_geometric(math.pi/4, input_pose)
+        pre_swipe_sol, prepsi = kinematics.IK_geometric(math.pi/4, input_pose, self.GripFlag)
 
         post_swipe_sol = np.copy(pre_swipe_sol)
 
@@ -735,7 +750,8 @@ class StateMachine():
                 x = elem.XYZ[0]
                 y = elem.XYZ[1]
                 z = elem.XYZ[2]
-                elem.XYZ[2] -= elem.height/4.3
+                if elem.shape == "large":
+                    elem.XYZ[2] -= 7
                 angle = elem.angle
                 shape = elem.shape
                 prev_psi = self.moveBlock(elem.XYZ, elem.height, prev_psi, angle)
@@ -810,34 +826,65 @@ class StateMachine():
             h1 = 0
             h2 = 0
             h3 = 0
-            staq_1 = np.array([-200, -100, h1])
-            staq_2 = np.array([150, -100, h2])
-            staq_3 = np.array([200, -100, h3])
-            
+            staq_1 = np.array([-350, -100, h1])
+            staq_2 = np.array([-250, -100, h2])
+            staq_3 = np.array([-150, -100, h3])            
+
+            swiper_height = 40
+            for elem in block_coordsXYZ:
+                if (elem.stacked == False):
+                    continue
+                x = elem.XYZ[0]
+                y = elem.XYZ[1]
+                z = np.copy(elem.XYZ[2])
+                elem.XYZ[2] = swiper_height
+                self.sweep_stack(elem.XYZ)
+
+            block_coordsXYZ = list(self.camera.block_coords)
+
+            while (len(block_coordsXYZ) < self.camera.num_blocks):
+                block_coordsXYZ = list(self.camera.block_coords)
+        
+            block_coordsXYZ = list(self.camera.block_coords)
+
             i = 0
             for elem in block_coordsXYZ:
+
                 x = elem.XYZ[0]
                 y = elem.XYZ[1]
                 z = elem.XYZ[2]
-                elem.XYZ[2] -= elem.height/4.3
+
+                # picking up the block
+                if elem.shape == "large":
+                    elem.XYZ[2] -= 7
+                # elif elem.shape == "small":
+                #     elem.XYZ[2] += 2
                 angle = elem.angle
                 shape = elem.shape
                 prev_psi = self.moveBlock(elem.XYZ, elem.height, prev_psi, angle)
                 rospy.sleep(0.5)
 
+                # deciding where to put the block
                 if (i <= 2):
+                    
+                    print("height of stack 1: " + str(h1))
                     prev_psi = self.moveBlock(staq_1, elem.height, prev_psi)
                     h1 += elem.height
-                    
+                    staq_1[2] = h1
 
                 elif (i <= 5):
+                    
+                    print("height of stack 2: " + str(h2))
                     prev_psi = self.moveBlock(staq_2, elem.height, prev_psi)
                     h2 += elem.height
-                   
+                    staq_2[2] = h2
 
                 else:
+                    
+                    print("height of stack 3: " + str(h3))
                     prev_psi = self.moveBlock(staq_3, elem.height, prev_psi)
                     h3 += elem.height
+                    staq_3[2] = h3
 
                 i += 1
             # now that all is done, lets deal with any remaining stacks
@@ -924,7 +971,12 @@ class StateMachine():
                 x = elem.XYZ[0]
                 y = elem.XYZ[1]
                 z = elem.XYZ[2]
-                elem.XYZ[2] -= elem.height/4.3
+
+                if elem.shape == "large":
+                    elem.XYZ[2] -= 7
+                #elif elem.shape == "small":
+                #    elem.XYZ[2] -= 
+
                 angle = elem.angle
                 shape = elem.shape
                 prev_psi = self.moveBlock(elem.XYZ, elem.height, prev_psi, angle)
@@ -963,7 +1015,8 @@ class StateMachine():
                 y = elem.XYZ[1]
                 z = elem.XYZ[2]
                 print("z in autonomy: ", z)
-                elem.XYZ[2] -= elem.height/4.3
+                if elem.shape == "large":
+                    elem.XYZ[2] -= 7
                 angle = elem.angle
                 shape = elem.shape
                 if x < -450 or x > 450 or y < -150 or y > 450 or z < -5:

@@ -166,7 +166,7 @@ def to_s_matrix(w, v):
     pass
 
 
-def IK_geometric(psi, pose, block_angle = 0):
+def IK_geometric(psi, pose, gripFlag, block_angle = 0):
     """!
     @brief      Get all possible joint configs that produce the pose.
 
@@ -201,7 +201,7 @@ def IK_geometric(psi, pose, block_angle = 0):
     # now calculating theta 3 , which will subsequently be used to calculate theta 2
 
     r_des = math.sqrt( x_c**2 + y_c**2 )
-    s_des = z_c - d_1 + 190
+    s_des = z_c - d_1 + 175
     #print(psi)
     if psi == math.pi/4:
             # if the hypotenuse of the desired wrist location with the vertical end effector is greater than l_2 + l_3 ( max arm length)
@@ -210,7 +210,15 @@ def IK_geometric(psi, pose, block_angle = 0):
             print("outside reachable space")
             psi = 0 #[rad]
 
-            r = math.sqrt( x_c**2 + y_c**2 ) - 174.15
+            # gripper is open
+            if gripFlag == True:
+
+                r = math.sqrt( x_c**2 + y_c**2 ) - 190
+            
+            else:
+
+                r = math.sqrt( x_c**2 + y_c**2 ) - 174.15
+            
             s = z_c - d_1
 
         else: # the hypotenuse of the desired wrist location is within l_2 + l_3
@@ -224,7 +232,15 @@ def IK_geometric(psi, pose, block_angle = 0):
         if psi == 0:
             print("outside reachable space")
 
-            r = math.sqrt( x_c**2 + y_c**2 ) - 174.15
+            # gripper is open
+            if gripFlag == True:
+
+                r = math.sqrt( x_c**2 + y_c**2 ) - 190
+            
+            else:
+                
+                r = math.sqrt( x_c**2 + y_c**2 ) - 174.15
+        
             s = z_c - d_1
 
         elif psi == math.pi/2: # the hypotenuse of the desired wrist location is within l_2 + l_3

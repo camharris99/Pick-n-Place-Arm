@@ -210,7 +210,7 @@ def IK_geometric(psi, pose, block_angle = 0):
             print("outside reachable space")
             psi = 0 #[rad]
 
-            r = math.sqrt( x_c**2 + y_c**2 ) - 190
+            r = math.sqrt( x_c**2 + y_c**2 ) - 174.15
             s = z_c - d_1
 
         else: # the hypotenuse of the desired wrist location is within l_2 + l_3
@@ -218,20 +218,20 @@ def IK_geometric(psi, pose, block_angle = 0):
             psi = math.pi/2 # [rad]
 
             r = math.sqrt( x_c**2 + y_c**2 )
-            s = z_c - d_1 + 190
+            s = z_c - d_1 + 174.15
     
     else:
         if psi == 0:
             print("outside reachable space")
 
-            r = math.sqrt( x_c**2 + y_c**2 ) - 190
+            r = math.sqrt( x_c**2 + y_c**2 ) - 174.15
             s = z_c - d_1
 
         elif psi == math.pi/2: # the hypotenuse of the desired wrist location is within l_2 + l_3
             print("inside reachable worksapce")
 
             r = math.sqrt( x_c**2 + y_c**2 )
-            s = z_c - d_1 + 190
+            s = z_c - d_1 + 174.15
 
     # theta 3 calculation --> there are two solutions (elbow up and elbow down)
     # this is for the "normal" theta 1 configuration
@@ -307,28 +307,32 @@ def IK_geometric(psi, pose, block_angle = 0):
 
         # this if elif else adjusts the shoulder angle for gravity depending on how low the target height is
         # there might need to be more work done here - this was just an initial attempt at scaling to compensate for motor sag
-        if z_c < 60:
-            theta_21c -= 10*D2R
-            theta_22c -= 10*D2R
-            theta_21_2c -= 10*D2R
-            theta_22_2c -= 10*D2R
+        angle = 0
+        if z_c < 80:
+            angle = 8
+            theta_21c -= angle*D2R
+            theta_22c -= angle*D2R
+            theta_21_2c -= angle*D2R
+            theta_22_2c -= angle*D2R
     
-        elif z_c < 120:
-            theta_21c -= 8.5*D2R
-            theta_22c -= 8.5*D2R
-            theta_21_2c -= 8.5*D2R
-            theta_22_2c -= 8.5*D2R
+        elif z_c < 160:
+            angle = 6.5
+            theta_21c -= angle*D2R
+            theta_22c -= angle*D2R
+            theta_21_2c -= angle*D2R
+            theta_22_2c -= angle*D2R
 
-        else: 
-            theta_21c -= 7.5*D2R
-            theta_22c -= 7.5*D2R
-            theta_21_2c -= 7.5*D2R
-            theta_22_2c -= 7.5*D2R
+        # else: 
+        #     angle = 3
+        #     theta_21c -= angle*D2R
+        #     theta_22c -= angle*D2R
+        #     theta_21_2c -= angle*D2R
+        #     theta_22_2c -= angle*D2R
 
-        theta_41 = alpha_1 + psi - 10*D2R
-        theta_42 = alpha_2 + psi - 10*D2R
-        theta_41_2 = alpha_3 + psi - 10*D2R
-        theta_42_2 = alpha_4 + psi - 10*D2R
+        theta_41 = alpha_1 + psi - angle*D2R
+        theta_42 = alpha_2 + psi - angle*D2R
+        theta_41_2 = alpha_3 + psi - angle*D2R
+        theta_42_2 = alpha_4 + psi - angle*D2R
     
     elif np.abs(psi) == math.pi/2:
 

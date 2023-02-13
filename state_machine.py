@@ -366,9 +366,9 @@ class StateMachine():
         
             # pose to leave the block once it has been dropped of
             leave_pose = np.copy(pose)
-            leave_pose[0,0] *= 0.9
-            leave_pose[1,0] *= 0.9
-            leave_pose[2,0] += 75 # [mm]
+            # leave_pose[0,0] *= 0.9
+            # leave_pose[1,0] *= 0.9
+            
             
             # pose to appraoch drop off before assuming drop-off position
             pre_pose = np.copy(pose)
@@ -378,6 +378,12 @@ class StateMachine():
             # solving for solution to get approach position
 
             presoln, prepsi = kinematics.IK_geometric(math.pi/4, pre_pose)
+
+            # offset to ensure the grabber doesn't knock over blocks when it leaves from stacking
+            if prepsi == math.pi/2:
+                leave_pose[2,0] += 75 # [mm]
+            else: 
+                leave_pose[2,0] += 100 # [mm]
 
             int_pose = np.zeros([1,5])
             int_pose = np.copy(presoln[1,:])
@@ -407,46 +413,49 @@ class StateMachine():
             
             # horizontal end effector orientation:
             else:
-                pose[2,0] += height*.5
+                pose[2,0] += height*.45
+
+                if height == 25:
+                    pose[2,0] -= 7
 
             #print(prev_psi)
             #print(" ")
             #print("prepsi: " + str(prepsi))
 
-            if prepsi == prev_psi:
-                pass
+            # if prepsi == prev_psi:
+            #     pass
 
-            # horizontal to vertical end effector  orientatin change
-            elif prepsi == np.abs(math.pi/2) and prev_psi == 0.:  
+            # # horizontal to vertical end effector  orientatin change
+            if prepsi == np.abs(math.pi/2) and prev_psi == 0.:  
                 pose[2,0] += 10 #[mm]
 
             # vertical to horizontal end effector change
-            elif prepsi == 0.: # and prev_psi == np.abs(math.pi/2):
+            # elif prepsi == 0.: # and prev_psi == np.abs(math.pi/2):
             
-                # trying to scale things based on the angle to account for the difference in ee position between vertical and horizontal
-                x_p = np.copy(pose[0,0])
-                y_p = np.copy(pose[1,0])
-                theta = R2D * (math.atan2(y_p,x_p) - math.pi/2)
-                print("theta: " + str(theta))
-                scale = 0.15*theta/90
-                #print("scale: ")
-                #print(scale)
-                pose[0,0] *= 1+scale
-                pose[1,0] *= 1 + (0.15 - scale)
-                #print("horiz pose: ")
-                #print(pose)
-                pose[2,0] += 2.5 # [mm]
+            #     # trying to scale things based on the angle to account for the difference in ee position between vertical and horizontal
+            #     x_p = np.copy(pose[0,0])
+            #     y_p = np.copy(pose[1,0])
+            #     theta = R2D * (math.atan2(y_p,x_p) - math.pi/2)
+            #     print("theta: " + str(theta))
+            #     scale = 0.*theta/90
+            #     #print("scale: ")
+            #     #print(scale)
+            #     pose[0,0] *= 1+scale
+            #     pose[1,0] *= 1 + (0.15 - scale)
+            #     #print("horiz pose: ")
+            #     #print(pose)
+            #     pose[2,0] += 2.5 # [mm]
                 
-                horz_pose = pose.copy()
-                horz_pose[2,0] = pre_pose[2,0]
+            #     horz_pose = pose.copy()
+            #     horz_pose[2,0] = pre_pose[2,0]
 
-                horiz_soln, horz_psi = kinematics.IK_geometric(prepsi, horz_pose) 
+            #     horiz_soln, horz_psi = kinematics.IK_geometric(prepsi, horz_pose) 
 
-                move = self.changeMoveSpeed(horiz_soln[1,:])
-                self.rxarm.set_moving_time(move)
-                self.rxarm.set_accel_time(move/4)
-                self.rxarm.set_positions(horiz_soln[1,:])
-                rospy.sleep(1)
+            #     move = self.changeMoveSpeed(horiz_soln[1,:])
+            #     self.rxarm.set_moving_time(move)
+            #     self.rxarm.set_accel_time(move/4)
+            #     self.rxarm.set_positions(horiz_soln[1,:])
+            #     rospy.sleep(1)
 
             solns, solnpsi = kinematics.IK_geometric(prepsi, pose)
 
@@ -726,7 +735,7 @@ class StateMachine():
                 x = elem.XYZ[0]
                 y = elem.XYZ[1]
                 z = elem.XYZ[2]
-                elem.XYZ[2] -= 10
+                elem.XYZ[2] -= elem.height/4.3
                 angle = elem.angle
                 shape = elem.shape
                 prev_psi = self.moveBlock(elem.XYZ, elem.height, prev_psi, angle)
@@ -769,7 +778,7 @@ class StateMachine():
                         # print("current block_coord length: ", len(block_coordsXYZ))
                         continue
 
-                    block_coordsXYZ[i].XYZ[2] -= 10
+                    block_coordsXYZ[i].XYZ[2] -= elem.height/4
                     angle = block_coordsXYZ[i].angle
                     shape = block_coordsXYZ[i].shape
                     prev_psi = self.moveBlock(block_coordsXYZ[i].XYZ, block_coordsXYZ[i].height, prev_psi, angle)
@@ -794,7 +803,90 @@ class StateMachine():
                 pass
             
         if (self.event_selection == "event 2"):
-            pass
+            
+            ## NOTE : THIS EVENT 2 CODE IS NOT FUNCTIONAL. DONT EXPECT IT DO TO DO THE INTENDED THING FOR EVEENT 2 YET  
+
+            block_coordsXYZ.sort(key=sort_by_norm)
+            h1 = 0
+            h2 = 0
+            h3 = 0
+            staq_1 = np.array([-200, -100, h1])
+            staq_2 = np.array([150, -100, h2])
+            staq_3 = np.array([200, -100, h3])
+            
+            i = 0
+            for elem in block_coordsXYZ:
+                x = elem.XYZ[0]
+                y = elem.XYZ[1]
+                z = elem.XYZ[2]
+                elem.XYZ[2] -= elem.height/4.3
+                angle = elem.angle
+                shape = elem.shape
+                prev_psi = self.moveBlock(elem.XYZ, elem.height, prev_psi, angle)
+                rospy.sleep(0.5)
+
+                if (i <= 2):
+                    prev_psi = self.moveBlock(staq_1, elem.height, prev_psi)
+                    h1 += elem.height
+                    
+
+                elif (i <= 5):
+                    prev_psi = self.moveBlock(staq_2, elem.height, prev_psi)
+                    h2 += elem.height
+                   
+
+                else:
+                    prev_psi = self.moveBlock(staq_3, elem.height, prev_psi)
+                    h3 += elem.height
+
+                i += 1
+            # now that all is done, lets deal with any remaining stacks
+            # remaining_blocks = 1000
+            # while (remaining_blocks > 0):
+            #     print("starting stack detection")
+            #     self.camera.blockDetector(True)
+            #     block_coordsXYZ = list(self.camera.block_coords)
+
+            #     while (len(block_coordsXYZ) < self.camera.num_blocks):
+            #         block_coordsXYZ = list(self.camera.block_coords)
+
+            #     for i in range(len(block_coordsXYZ)-1, -1, -1):
+            #         x = block_coordsXYZ[i].XYZ[0]
+            #         y = block_coordsXYZ[i].XYZ[1]
+            #         z = block_coordsXYZ[i].XYZ[2]
+
+            #         if (y < 0):
+            #             del block_coordsXYZ[i]
+            #             if (len(block_coordsXYZ) == 0):
+            #                 # print("no stacks left!")
+            #                 remaining_blocks = 0
+            #             # print("block coord deleted: ", i)
+            #             # print("current block_coord length: ", len(block_coordsXYZ))
+            #             continue
+
+            #         block_coordsXYZ[i].XYZ[2] -= elem.height/3.5
+            #         angle = block_coordsXYZ[i].angle
+            #         shape = block_coordsXYZ[i].shape
+            #         prev_psi = self.moveBlock(block_coordsXYZ[i].XYZ, block_coordsXYZ[i].height, prev_psi, angle)
+            #         rospy.sleep(0.5)
+
+            #         if (shape == "large"):
+            #             prev_psi = self.moveBlock(large_drop_pt_world, block_coordsXYZ[i].height, prev_psi)
+            #             if (large_drop_pt_world[0] >= -175):
+            #                 large_drop_pt_world[2] += block_coordsXYZ[i].height
+            #             else:
+            #                 large_drop_pt_world[0] += 60
+            #         elif (shape == "small"):
+            #             prev_psi = self.moveBlock(small_drop_pt_world, block_coordsXYZ[i].height, prev_psi)
+            #             if (small_drop_pt_world[0] <= 175):
+            #                 small_drop_pt_world[2] -= block_coordsXYZ[i].height
+            #             else:
+            #                 small_drop_pt_world[0] -= 40
+                    
+            #         else:
+            #             print("stacks found!")
+
+            #     pass
         
         if (self.event_selection == "event 3"):          
             """
@@ -832,7 +924,7 @@ class StateMachine():
                 x = elem.XYZ[0]
                 y = elem.XYZ[1]
                 z = elem.XYZ[2]
-                elem.XYZ[2] -= 10
+                elem.XYZ[2] -= elem.height/4.3
                 angle = elem.angle
                 shape = elem.shape
                 prev_psi = self.moveBlock(elem.XYZ, elem.height, prev_psi, angle)
@@ -871,7 +963,7 @@ class StateMachine():
                 y = elem.XYZ[1]
                 z = elem.XYZ[2]
                 print("z in autonomy: ", z)
-                elem.XYZ[2] -= 10
+                elem.XYZ[2] -= elem.height/4.3
                 angle = elem.angle
                 shape = elem.shape
                 if x < -450 or x > 450 or y < -150 or y > 450 or z < -5:

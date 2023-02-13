@@ -222,7 +222,7 @@ def IK_geometric(psi, pose, gripFlag, block_angle = 0):
             s = z_c - d_1
 
         else: # the hypotenuse of the desired wrist location is within l_2 + l_3
-            print("inside reachable worksapce")
+            # print("inside reachable worksapce")
             psi = math.pi/2 # [rad]
 
             r = math.sqrt( x_c**2 + y_c**2 )
@@ -230,7 +230,7 @@ def IK_geometric(psi, pose, gripFlag, block_angle = 0):
     
     else:
         if psi == 0:
-            print("outside reachable space")
+            # print("outside reachable space")
 
             # gripper is open
             if gripFlag == True:

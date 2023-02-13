@@ -517,12 +517,13 @@ class StateMachine():
 
     def sweep_stack(self, input_pose):
         self.rxarm.close_gripper()
+        self.GripFlag = False
 
         pre_swipe_sol, prepsi = kinematics.IK_geometric(math.pi/4, input_pose, self.GripFlag)
 
         post_swipe_sol = np.copy(pre_swipe_sol)
 
-        if (input_pose[0] <= 0):
+        if (input_pose[0] >= 0):
             pre_swipe_sol[1,0] += 15 * D2R
             post_swipe_sol[1,0] -= 10 * D2R
         else:
@@ -545,8 +546,6 @@ class StateMachine():
         self.rxarm.set_positions(post_swipe_sol[1,:])
         rospy.sleep(1)
 
-        self.rxarm.open_gripper()
-
         leave_sol = np.copy(post_swipe_sol)
         leave_sol[1,1] -= 15 * D2R
 
@@ -555,6 +554,9 @@ class StateMachine():
         self.rxarm.set_accel_time(move/4)
         self.rxarm.set_positions(leave_sol[1,:])
         rospy.sleep(1)
+
+        self.rxarm.open_gripper()
+        self.GripFlag = True
 
         pass
 
@@ -740,8 +742,11 @@ class StateMachine():
                     return np.linalg.norm(val.XYZ)
         def sort_by_stack(val):
                     return val.stacked
+        def sort_by_color(val):
+                    return val.color_index
 
-        if (self.event_selection == "event 1"):            
+        if (self.event_selection == "event 1"):     
+
             block_coordsXYZ.sort(key=sort_by_norm)
             large_drop_pt_world = np.array([-375, -100, 0])
             small_drop_pt_world = np.array([375, -100, 0])
@@ -826,26 +831,36 @@ class StateMachine():
             h1 = 0
             h2 = 0
             h3 = 0
-            staq_1 = np.array([-350, -100, h1])
-            staq_2 = np.array([-250, -100, h2])
+            staq_1 = np.array([-300, -100, h1])
+            staq_2 = np.array([250, -100, h2])
             staq_3 = np.array([-150, -100, h3])            
 
-            swiper_height = 40
+            swiper_height = 50
             for elem in block_coordsXYZ:
                 if (elem.stacked == False):
                     continue
+                print("stack found!")
                 x = elem.XYZ[0]
                 y = elem.XYZ[1]
                 z = np.copy(elem.XYZ[2])
                 elem.XYZ[2] = swiper_height
                 self.sweep_stack(elem.XYZ)
 
+            rospy.sleep(1)
+            self.camera.blockDetector(True)
+
             block_coordsXYZ = list(self.camera.block_coords)
+
+            print("num blocks: ", self.camera.num_blocks)
 
             while (len(block_coordsXYZ) < self.camera.num_blocks):
                 block_coordsXYZ = list(self.camera.block_coords)
-        
-            block_coordsXYZ = list(self.camera.block_coords)
+
+            print("num found: ", len(block_coordsXYZ))
+
+
+            block_coordsXYZ.sort(key=sort_by_norm)
+
 
             i = 0
             for elem in block_coordsXYZ:
@@ -853,7 +868,7 @@ class StateMachine():
                 x = elem.XYZ[0]
                 y = elem.XYZ[1]
                 z = elem.XYZ[2]
-
+                print("going for: ", elem.color, " ", elem.shape, " block!")
                 # picking up the block
                 if elem.shape == "large":
                     elem.XYZ[2] -= 7
@@ -952,6 +967,9 @@ class StateMachine():
             block_coordsXYZ.sort(key=sort_by_stack)
             swiper_height = 40
 
+            large_drop_pt_world = np.array([-375, -100, 0])
+            small_drop_pt_world = np.array([375, -100, 0])
+
             # knock down all stacked
             for elem in block_coordsXYZ:
                 if (elem.stacked == False):
@@ -962,10 +980,15 @@ class StateMachine():
                 elem.XYZ[2] = swiper_height
                 self.sweep_stack(elem.XYZ)
 
-            rospy.sleep(10)
+            rospy.sleep(1)
 
-            large_drop_pt_world = np.array([-375, -100, 0])
-            small_drop_pt_world = np.array([375, -100, 0])
+            self.camera.blockDetector(True)
+            block_coordsXYZ = list(self.camera.block_coords)
+
+            while (len(block_coordsXYZ) < self.camera.num_blocks):
+                block_coordsXYZ = list(self.camera.block_coords)
+
+            block_coordsXYZ.sort(key=sort_by_color)
 
             for elem in block_coordsXYZ:
                 x = elem.XYZ[0]
@@ -991,13 +1014,60 @@ class StateMachine():
                 elif (elem.shape == "small"):
                     prev_psi = self.moveBlock(small_drop_pt_world, elem.height, prev_psi)
                     if (small_drop_pt_world[0] <= 175):
-                        small_drop_pt_world[2] -= elem.height
+                        small_drop_pt_world[2] += elem.height
                     else:
                         small_drop_pt_world[0] -= 40
 
 
         if (self.event_selection == "event 4"):
-            pass
+            block_coordsXYZ.sort(key=sort_by_stack)
+            swiper_height = 50
+
+            large_drop_pt_world = np.array([-200, -100, 0])
+            small_drop_pt_world = np.array([200, -100, 0])
+
+            # knock down all stacked
+            for elem in block_coordsXYZ:
+                if (elem.stacked == False):
+                    continue
+                x = elem.XYZ[0]
+                y = elem.XYZ[1]
+                z = np.copy(elem.XYZ[2])
+                elem.XYZ[2] = swiper_height
+                self.sweep_stack(elem.XYZ)
+
+            rospy.sleep(1)
+
+            self.camera.blockDetector(True)
+            block_coordsXYZ = list(self.camera.block_coords)
+
+            while (len(block_coordsXYZ) < self.camera.num_blocks):
+                block_coordsXYZ = list(self.camera.block_coords)
+
+            block_coordsXYZ.sort(key=sort_by_color)
+
+            for elem in block_coordsXYZ:
+                x = elem.XYZ[0]
+                y = elem.XYZ[1]
+                z = elem.XYZ[2]
+
+                if elem.shape == "large":
+                    elem.XYZ[2] -= 7
+                #elif elem.shape == "small":
+                #    elem.XYZ[2] -= 
+
+                angle = elem.angle
+                shape = elem.shape
+                prev_psi = self.moveBlock(elem.XYZ, elem.height, prev_psi, angle)
+                rospy.sleep(0.5)
+
+                if (elem.shape == "large"):
+                    prev_psi = self.moveBlock(large_drop_pt_world, elem.height, prev_psi)
+                    large_drop_pt_world[2] += elem.height
+                elif (elem.shape == "small"):
+                    prev_psi = self.moveBlock(small_drop_pt_world, elem.height, prev_psi)
+                    small_drop_pt_world[2] += elem.height
+
 
         if (self.event_selection == "event 5"):
             def sort_by_norm(val):

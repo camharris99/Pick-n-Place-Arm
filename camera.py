@@ -21,7 +21,7 @@ class Block():
     @brief This class describes a shape in the workspace
     """
 
-    def __init__(self, color, xyz, shape, angle, height, stacked):
+    def __init__(self, color, xyz, shape, angle, height, stacked, index):
         """!
         @brief Constructs an instance of a block object
         """
@@ -32,6 +32,7 @@ class Block():
         self.angle = angle
         self.height = height
         self.stacked = stacked
+        self.color_index = index
 
     # def assignXYZ(self):
     #     """!
@@ -324,21 +325,27 @@ class Camera():
             mask2 = cv2.inRange(copy, (0,55,70), (3, 255, 255))
             mask = mask1 + mask2
             contour_color = (175,255,255)
+            color_index = 0
         elif (color == "orange"):
             mask = cv2.inRange(copy, (3,90,125), (15, 255, 255))
             contour_color = (8,250,250)
+            color_index = 1
         elif (color == "yellow"):
             mask = cv2.inRange(copy, (20,135,160), (27, 255, 255))
             contour_color = (23,200,250)
+            color_index = 2
         elif (color == "green"):
             mask = cv2.inRange(copy, (50,70,50), (90, 255, 255))
             contour_color = (75,255,255)
+            color_index = 3
         elif (color == "blue"):
             mask = cv2.inRange(copy, (93,93,93), (110, 255, 255))
             contour_color = (102,255,255)
+            color_index = 4
         elif (color == "purple"):
             mask = cv2.inRange(copy, (109,0,0), (150, 255, 255))
             contour_color = (115,120,255)
+            color_index = 5
 
         # this is where the magic happens. Set everywhere in the image that
         # # corresponds to a zero in the mask also to zero
@@ -427,7 +434,7 @@ class Camera():
             world_coords = np.expand_dims(world_coords, axis=1)
             
 
-            block_obj = Block(color, world_coords[0:3], size, world_coords[3], height, stacked)
+            block_obj = Block(color, world_coords[0:3], size, world_coords[3], height, stacked, color_index)
 
             # add the world coordinates of the current contour to self.block_coords
             self.block_coords.append(block_obj)

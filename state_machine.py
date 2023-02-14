@@ -223,7 +223,7 @@ class StateMachine():
         next = next_pose
         curr = self.rxarm.get_positions()
         diff = next - curr
-        weighted = np.multiply(diff,np.array([3,3.5,2,.5,1.5]))
+        weighted = np.multiply(diff,np.array([3,3.5,2,.5,2]))
         norm = np.linalg.norm(weighted, ord=2)
         return norm/4
 
@@ -329,7 +329,7 @@ class StateMachine():
                 solns, solnpsi = kinematics.IK_geometric(prepsi, pose, self.GripFlag)
 
             move = self.changeMoveSpeed(solns[1,:])
-            self.rxarm.set_moving_time(move)
+            self.rxarm.set_moving_time(3*move)
             self.rxarm.set_accel_time(move/4)
             self.rxarm.set_positions(solns[1,:])
             rospy.sleep(1.5)
@@ -477,7 +477,7 @@ class StateMachine():
             
 
             move = self.changeMoveSpeed(solns[1,:])
-            self.rxarm.set_moving_time(move)
+            self.rxarm.set_moving_time(3*move)
             self.rxarm.set_accel_time(move/4)
             self.rxarm.set_positions(solns[1,:])
             rospy.sleep(2.5)
@@ -827,7 +827,6 @@ class StateMachine():
             
             ## NOTE : THIS EVENT 2 CODE IS NOT FUNCTIONAL. DONT EXPECT IT DO TO DO THE INTENDED THING FOR EVEENT 2 YET  
 
-            block_coordsXYZ.sort(key=sort_by_norm)
             h1 = 0
             h2 = 0
             h3 = 0
@@ -835,34 +834,28 @@ class StateMachine():
             staq_2 = np.array([250, -100, h2])
             staq_3 = np.array([-150, -100, h3])            
 
-            swiper_height = 50
-            for elem in block_coordsXYZ:
-                if (elem.stacked == False):
-                    continue
-                print("stack found!")
-                x = elem.XYZ[0]
-                y = elem.XYZ[1]
-                z = np.copy(elem.XYZ[2])
-                elem.XYZ[2] = swiper_height
-                self.sweep_stack(elem.XYZ)
+            # swiper_height = 60
+            # for elem in block_coordsXYZ:
+            #     if (elem.stacked == False):
+            #         continue
+            #     print("stack found!")
+            #     x = elem.XYZ[0]
+            #     y = elem.XYZ[1]
+            #     z = np.copy(elem.XYZ[2])
+            #     elem.XYZ[2] = swiper_height
+            #     self.sweep_stack(elem.XYZ)
 
-            rospy.sleep(1)
             self.camera.blockDetector(True)
 
             block_coordsXYZ = list(self.camera.block_coords)
 
-            print("num blocks: ", self.camera.num_blocks)
-
             while (len(block_coordsXYZ) < self.camera.num_blocks):
                 block_coordsXYZ = list(self.camera.block_coords)
-
-            print("num found: ", len(block_coordsXYZ))
-
 
             block_coordsXYZ.sort(key=sort_by_norm)
 
 
-            i = 0
+            stack_counter = 0
             for elem in block_coordsXYZ:
 
                 x = elem.XYZ[0]
@@ -880,14 +873,14 @@ class StateMachine():
                 rospy.sleep(0.5)
 
                 # deciding where to put the block
-                if (i <= 2):
+                if (stack_counter<= 2):
                     
                     print("height of stack 1: " + str(h1))
                     prev_psi = self.moveBlock(staq_1, elem.height, prev_psi)
                     h1 += elem.height
                     staq_1[2] = h1
 
-                elif (i <= 5):
+                elif (stack_counter<= 5):
                     
                     print("height of stack 2: " + str(h2))
                     prev_psi = self.moveBlock(staq_2, elem.height, prev_psi)
@@ -901,52 +894,59 @@ class StateMachine():
                     h3 += elem.height
                     staq_3[2] = h3
 
-                i += 1
+                stack_counter+= 1
             # now that all is done, lets deal with any remaining stacks
-            # remaining_blocks = 1000
-            # while (remaining_blocks > 0):
-            #     print("starting stack detection")
-            #     self.camera.blockDetector(True)
-            #     block_coordsXYZ = list(self.camera.block_coords)
+            remaining_blocks = 1000
+            while (remaining_blocks > 0):
+                print("starting stack detection")
+                self.camera.blockDetector(True)
+                block_coordsXYZ = list(self.camera.block_coords)
 
-            #     while (len(block_coordsXYZ) < self.camera.num_blocks):
-            #         block_coordsXYZ = list(self.camera.block_coords)
+                while (len(block_coordsXYZ) < self.camera.num_blocks):
+                    block_coordsXYZ = list(self.camera.block_coords)
 
-            #     for i in range(len(block_coordsXYZ)-1, -1, -1):
-            #         x = block_coordsXYZ[i].XYZ[0]
-            #         y = block_coordsXYZ[i].XYZ[1]
-            #         z = block_coordsXYZ[i].XYZ[2]
+                for i in range(len(block_coordsXYZ)-1, -1, -1):
+                    x = block_coordsXYZ[i].XYZ[0]
+                    y = block_coordsXYZ[i].XYZ[1]
+                    z = block_coordsXYZ[i].XYZ[2]
 
-            #         if (y < 0):
-            #             del block_coordsXYZ[i]
-            #             if (len(block_coordsXYZ) == 0):
-            #                 # print("no stacks left!")
-            #                 remaining_blocks = 0
-            #             # print("block coord deleted: ", i)
-            #             # print("current block_coord length: ", len(block_coordsXYZ))
-            #             continue
+                    if (y < 0):
+                        del block_coordsXYZ[i]
+                        if (len(block_coordsXYZ) == 0):
+                            # print("no stacks left!")
+                            remaining_blocks = 0
+                        # print("block coord deleted: ", i)
+                        # print("current block_coord length: ", len(block_coordsXYZ))
+                        continue
 
-            #         block_coordsXYZ[i].XYZ[2] -= elem.height/3.5
-            #         angle = block_coordsXYZ[i].angle
-            #         shape = block_coordsXYZ[i].shape
-            #         prev_psi = self.moveBlock(block_coordsXYZ[i].XYZ, block_coordsXYZ[i].height, prev_psi, angle)
-            #         rospy.sleep(0.5)
+                    block_coordsXYZ[i].XYZ[2] -= elem.height/3.5
+                    angle = block_coordsXYZ[i].angle
+                    shape = block_coordsXYZ[i].shape
+                    prev_psi = self.moveBlock(block_coordsXYZ[i].XYZ, block_coordsXYZ[i].height, prev_psi, angle)
+                    rospy.sleep(0.5)
 
-            #         if (shape == "large"):
-            #             prev_psi = self.moveBlock(large_drop_pt_world, block_coordsXYZ[i].height, prev_psi)
-            #             if (large_drop_pt_world[0] >= -175):
-            #                 large_drop_pt_world[2] += block_coordsXYZ[i].height
-            #             else:
-            #                 large_drop_pt_world[0] += 60
-            #         elif (shape == "small"):
-            #             prev_psi = self.moveBlock(small_drop_pt_world, block_coordsXYZ[i].height, prev_psi)
-            #             if (small_drop_pt_world[0] <= 175):
-            #                 small_drop_pt_world[2] -= block_coordsXYZ[i].height
-            #             else:
-            #                 small_drop_pt_world[0] -= 40
+                    if (stack_counter<= 2):
                     
-            #         else:
-            #             print("stacks found!")
+                        print("height of stack 1: " + str(h1))
+                        prev_psi = self.moveBlock(staq_1, elem.height, prev_psi)
+                        h1 += elem.height
+                        staq_1[2] = h1
+
+                    elif (stack_counter<= 5):
+                    
+                        print("height of stack 2: " + str(h2))
+                        prev_psi = self.moveBlock(staq_2, elem.height, prev_psi)
+                        h2 += elem.height
+                        staq_2[2] = h2
+
+                    else:
+                    
+                        print("height of stack 3: " + str(h3))
+                        prev_psi = self.moveBlock(staq_3, elem.height, prev_psi)
+                        h3 += elem.height
+                        staq_3[2] = h3
+
+                    stack_counter+= 1
 
             #     pass
         
@@ -965,30 +965,69 @@ class StateMachine():
             """
 
             block_coordsXYZ.sort(key=sort_by_stack)
-            swiper_height = 40
+            swiper_height = 50
 
-            large_drop_pt_world = np.array([-375, -100, 0])
-            small_drop_pt_world = np.array([375, -100, 0])
+            red_large_drop_pt = np.array([-360, -100, 0])
+            red_small_drop_pt = np.array([350, -100, 0])
+
+            orange_large_drop_pt = np.copy(red_large_drop_pt)
+            orange_large_drop_pt[0] += 48
+            orange_small_drop_pt = np.copy(red_small_drop_pt)
+            orange_small_drop_pt[0] -= 35
+
+            yellow_large_drop_pt = np.copy(orange_large_drop_pt)
+            yellow_large_drop_pt[0] += 48
+            yellow_small_drop_pt = np.copy(orange_small_drop_pt)
+            yellow_small_drop_pt[0] -= 35
+
+            green_large_drop_pt = np.copy(yellow_large_drop_pt)
+            green_large_drop_pt[0] += 48
+            green_small_drop_pt = np.copy(yellow_small_drop_pt)
+            green_small_drop_pt[0] -= 35
+
+            blue_large_drop_pt = np.copy(green_large_drop_pt)
+            blue_large_drop_pt[0] += 48
+            blue_small_drop_pt = np.copy(green_small_drop_pt)
+            blue_small_drop_pt[0] -= 35
+
+            purple_large_drop_pt = np.copy(blue_large_drop_pt)
+            purple_large_drop_pt[0] += 48
+            purple_small_drop_pt = np.copy(blue_small_drop_pt)
+            purple_small_drop_pt[0] -= 35
 
             # knock down all stacked
+            # for elem in block_coordsXYZ:
+            #     if (elem.stacked == False):
+            #         continue
+            #     x = elem.XYZ[0]
+            #     y = elem.XYZ[1]
+            #     z = np.copy(elem.XYZ[2])
+            #     elem.XYZ[2] = swiper_height
+            #     self.sweep_stack(elem.XYZ)
+            
+            # removing blocks from negative y section
+            x_spot = -200
             for elem in block_coordsXYZ:
-                if (elem.stacked == False):
-                    continue
-                x = elem.XYZ[0]
-                y = elem.XYZ[1]
-                z = np.copy(elem.XYZ[2])
-                elem.XYZ[2] = swiper_height
-                self.sweep_stack(elem.XYZ)
 
-            rospy.sleep(1)
+                # if the block is in the negative y plane
+                
+                if elem.XYZ[1] < 0:
+
+                    prev_psi = self.moveBlock(elem.XYZ, elem.height, prev_psi, elem.angle)
+                    rospy.sleep(.5)
+                    prev_psi = self.moveBlock(np.array([[x_spot],[250],[100]]), elem.height, math.pi/4)
+                    rospy.sleep(.5)
+                    x_spot += 100
+
 
             self.camera.blockDetector(True)
             block_coordsXYZ = list(self.camera.block_coords)
+            print("num blocks: ", self.camera.num_blocks)
 
             while (len(block_coordsXYZ) < self.camera.num_blocks):
                 block_coordsXYZ = list(self.camera.block_coords)
 
-            block_coordsXYZ.sort(key=sort_by_color)
+            block_coordsXYZ.sort(key=sort_by_norm)
 
             for elem in block_coordsXYZ:
                 x = elem.XYZ[0]
@@ -1006,17 +1045,94 @@ class StateMachine():
                 rospy.sleep(0.5)
 
                 if (elem.shape == "large"):
-                    prev_psi = self.moveBlock(large_drop_pt_world, elem.height, prev_psi)
-                    if (large_drop_pt_world[0] >= -175):
-                        large_drop_pt_world[2] += elem.height
-                    else:
-                        large_drop_pt_world[0] += 60
+                    if (elem.color == "red"):
+                        prev_psi = self.moveBlock(red_large_drop_pt, elem.height, prev_psi)
+                    elif (elem.color == "orange"):
+                        prev_psi = self.moveBlock(orange_large_drop_pt, elem.height, prev_psi)
+                    elif (elem.color == "yellow"):
+                        prev_psi = self.moveBlock(yellow_large_drop_pt, elem.height, prev_psi)
+                    elif (elem.color == "green"):
+                        prev_psi = self.moveBlock(green_large_drop_pt, elem.height, prev_psi)
+                    elif (elem.color == "blue"):
+                        prev_psi = self.moveBlock(blue_large_drop_pt, elem.height, prev_psi)
+                    elif (elem.color == "purple"):
+                        prev_psi = self.moveBlock(purple_large_drop_pt, elem.height, prev_psi)
+                    
                 elif (elem.shape == "small"):
-                    prev_psi = self.moveBlock(small_drop_pt_world, elem.height, prev_psi)
-                    if (small_drop_pt_world[0] <= 175):
-                        small_drop_pt_world[2] += elem.height
-                    else:
-                        small_drop_pt_world[0] -= 40
+                    if (elem.color == "red"):
+                        prev_psi = self.moveBlock(red_small_drop_pt, elem.height, prev_psi)
+                    elif (elem.color == "orange"):
+                        prev_psi = self.moveBlock(orange_small_drop_pt, elem.height, prev_psi)
+                    elif (elem.color == "yellow"):
+                        prev_psi = self.moveBlock(yellow_small_drop_pt, elem.height, prev_psi)
+                    elif (elem.color == "green"):
+                        prev_psi = self.moveBlock(green_small_drop_pt, elem.height, prev_psi)
+                    elif (elem.color == "blue"):
+                        prev_psi = self.moveBlock(blue_small_drop_pt, elem.height, prev_psi)
+                    elif (elem.color == "purple"):
+                        prev_psi = self.moveBlock(purple_small_drop_pt, elem.height, prev_psi)
+
+            # now that all is done, lets deal with any remaining stacks
+            remaining_blocks = 1000
+            while (remaining_blocks > 0):
+                print("starting stack detection")
+                self.camera.blockDetector(True)
+                block_coordsXYZ = list(self.camera.block_coords)
+
+                while (len(block_coordsXYZ) < self.camera.num_blocks):
+                    block_coordsXYZ = list(self.camera.block_coords)
+
+                for i in range(len(block_coordsXYZ)-1, -1, -1):
+                    x = block_coordsXYZ[i].XYZ[0]
+                    y = block_coordsXYZ[i].XYZ[1]
+                    z = block_coordsXYZ[i].XYZ[2]
+
+                    if (y < 0):
+                        del block_coordsXYZ[i]
+                        if (len(block_coordsXYZ) == 0):
+                            # print("no stacks left!")
+                            remaining_blocks = 0
+                        # print("block coord deleted: ", i)
+                        # print("current block_coord length: ", len(block_coordsXYZ))
+                        continue
+                    if block_coordsXYZ[i].shape == "large":
+                        block_coordsXYZ[i].XYZ[2] -= 7
+
+                    angle = block_coordsXYZ[i].angle
+                    shape = block_coordsXYZ[i].shape
+                    prev_psi = self.moveBlock(block_coordsXYZ[i].XYZ, block_coordsXYZ[i].height, prev_psi, angle)
+                    rospy.sleep(0.5)
+
+                    if (block_coordsXYZ[i].shape == "large"):
+                        if (block_coordsXYZ[i].color == "red"):
+                            prev_psi = self.moveBlock(red_large_drop_pt, block_coordsXYZ[i].height, prev_psi)
+                        elif (block_coordsXYZ[i].color == "orange"):
+                            prev_psi = self.moveBlock(orange_large_drop_pt, block_coordsXYZ[i].height, prev_psi)
+                        elif (block_coordsXYZ[i].color == "yellow"):
+                            prev_psi = self.moveBlock(yellow_large_drop_pt, block_coordsXYZ[i].height, prev_psi)
+                        elif (block_coordsXYZ[i].color == "green"):
+                            prev_psi = self.moveBlock(green_large_drop_pt, block_coordsXYZ[i].height, prev_psi)
+                        elif (block_coordsXYZ[i].color == "blue"):
+                            prev_psi = self.moveBlock(blue_large_drop_pt, block_coordsXYZ[i].height, prev_psi)
+                        elif (block_coordsXYZ[i].color == "purple"):
+                            prev_psi = self.moveBlock(purple_large_drop_pt, block_coordsXYZ[i].height, prev_psi)
+                        
+                    elif (block_coordsXYZ[i].shape == "small"):
+                        if (block_coordsXYZ[i].color == "red"):
+                            prev_psi = self.moveBlock(red_small_drop_pt, block_coordsXYZ[i].height, prev_psi)
+                        elif (block_coordsXYZ[i].color == "orange"):
+                            prev_psi = self.moveBlock(orange_small_drop_pt, block_coordsXYZ[i].height, prev_psi)
+                        elif (block_coordsXYZ[i].color == "yellow"):
+                            prev_psi = self.moveBlock(yellow_small_drop_pt, block_coordsXYZ[i].height, prev_psi)
+                        elif (block_coordsXYZ[i].color == "green"):
+                            prev_psi = self.moveBlock(green_small_drop_pt, block_coordsXYZ[i].height, prev_psi)
+                        elif (block_coordsXYZ[i].color == "blue"):
+                            prev_psi = self.moveBlock(blue_small_drop_pt, block_coordsXYZ[i].height, prev_psi)
+                        elif (block_coordsXYZ[i].color == "purple"):
+                            prev_psi = self.moveBlock(purple_small_drop_pt, block_coordsXYZ[i].height, prev_psi)
+
+                        else:
+                            print("stacks found!")
 
 
         if (self.event_selection == "event 4"):
@@ -1076,7 +1192,7 @@ class StateMachine():
             
             block_coordsXYZ.sort(key=sort_by_norm)
 
-            
+            blk_cnt = 0
             staq_height = 0.
             for elem in block_coordsXYZ:
                 #print(elem)
@@ -1111,7 +1227,7 @@ class StateMachine():
                         
                     #     # need to do the z measurement based off the x,y position because the pixel
                     #     # values do not change as the blocks stack, while the x,y positions do
-                    drop_pt_world = np.array([[204],[174],[staq_height]]) 
+                    drop_pt_world = np.array([[0],[225],[staq_height]]) 
                         
 
                     #     drop_pt_cam = np.matmul(np.linalg.inv(extrinsic), drop_pt_world)
@@ -1164,6 +1280,7 @@ class StateMachine():
                     
                     rospy.sleep(0.5)
                     staq_height += elem.height
+                    blk_cnt += 1
 
 
                 

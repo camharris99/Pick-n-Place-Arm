@@ -201,7 +201,7 @@ def IK_geometric(psi, pose, gripFlag, block_angle = 0):
     # now calculating theta 3 , which will subsequently be used to calculate theta 2
 
     r_des = math.sqrt( x_c**2 + y_c**2 )
-    s_des = z_c - d_1 + 175
+    s_des = z_c - d_1 + 178
     #print(psi)
     if psi == math.pi/4:
             # if the hypotenuse of the desired wrist location with the vertical end effector is greater than l_2 + l_3 ( max arm length)
@@ -309,6 +309,11 @@ def IK_geometric(psi, pose, gripFlag, block_angle = 0):
     # Assume (until block detection is implemented) that the blocks edges are parallel to the grid. Thus when the end effector is pointing
     # down, theta_5 = -theta_1 to keep the end effector prongs aligned with the grid.
 
+    theta_51 = 0     #block_angle*D2R
+    theta_52 = 0     #block_angle*D2R
+    theta_51_2 = 0       #block_angle*D2R
+    theta_52_2 = 0       #block_angle*D2R
+
     if psi == 0:
 
         alpha_1 = theta_21c - theta_31c
@@ -316,10 +321,7 @@ def IK_geometric(psi, pose, gripFlag, block_angle = 0):
         alpha_3 = theta_21_2c - theta_31_2c
         alpha_4 = theta_22_2c - theta_32_2c
 
-        theta_51 = 0     #block_angle*D2R
-        theta_52 = 0     #block_angle*D2R
-        theta_51_2 = 0       #block_angle*D2R
-        theta_52_2 = 0       #block_angle*D2R
+        
 
         # this if elif else adjusts the shoulder angle for gravity depending on how low the target height is
         # there might need to be more work done here - this was just an initial attempt at scaling to compensate for motor sag
@@ -365,6 +367,7 @@ def IK_geometric(psi, pose, gripFlag, block_angle = 0):
         alpha_3 = -math.pi + theta_21_2c - theta_31_2c
         alpha_4 = -math.pi + theta_22_2c - theta_32_2c
 
+        
         theta_51 = theta_11 + block_angle*D2R
         theta_52 = theta_11 + block_angle*D2R
         theta_51_2 = theta_12 + block_angle*D2R
@@ -373,8 +376,7 @@ def IK_geometric(psi, pose, gripFlag, block_angle = 0):
         theta_41 = alpha_1 + psi
         theta_42 = alpha_2 + psi 
         theta_41_2 = alpha_3 + psi 
-        theta_42_2 = alpha_4 + psi 
-
+        theta_42_2 = alpha_4 + psi
     
 
     soln[0,:] = [theta_11 , theta_21c , theta_31c, theta_41 , theta_51]
@@ -385,6 +387,28 @@ def IK_geometric(psi, pose, gripFlag, block_angle = 0):
     if x_c < 0 and y_c < 0:
         soln[1,0] += 2*math.pi
 
-    #print(R2D*soln[1,:])
+        # attempting to fix lack of theta_5 rotation
+        # tingus = 180 - soln[1,0]
+        # pingus = 90 - tingus
+        if np.abs(psi) == math.pi/2:
+            
+            soln[0,4] = soln[0,0] + block_angle*D2R - math.pi/2
+            soln[1,4] = soln[1,0] + block_angle*D2R - math.pi/2
+            soln[2,4] = soln[2,0] + block_angle*D2R - math.pi/2
+            soln[3,4] = soln[3,0] + block_angle*D2R - math.pi/2
+
+    if psi == math.pi/2 and x_c > 0 and y_c < 0:
+
+            soln[0,4] = soln[0,0] + math.pi/2 + block_angle*D2R
+            soln[1,4] = soln[1,0] + math.pi/2 + block_angle*D2R
+            soln[2,4] = soln[2,0] + math.pi/2 + block_angle*D2R
+            soln[3,4] = soln[3,0] + math.pi/2 + block_angle*D2R
+
+        # soln[1,4] = pingus
+    print("solution: ")
+    print(R2D*soln[1,:])
+    print(" ")
     
+    
+
     return soln, psi

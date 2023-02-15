@@ -334,12 +334,18 @@ def IK_geometric(psi, pose, gripFlag, block_angle = 0):
             theta_22_2c -= angle*D2R
     
         elif z_c < 160:
-            angle = 6.5
+            angle = 3
             theta_21c -= angle*D2R
             theta_22c -= angle*D2R
             theta_21_2c -= angle*D2R
             theta_22_2c -= angle*D2R
-
+        
+        elif r > 350:
+            angle = 5
+            theta_21c -= angle*D2R
+            theta_22c -= angle*D2R
+            theta_21_2c -= angle*D2R
+            theta_22_2c -= angle*D2R
         # else: 
         #     angle = 3
         #     theta_21c -= angle*D2R
@@ -354,7 +360,7 @@ def IK_geometric(psi, pose, gripFlag, block_angle = 0):
     
     elif np.abs(psi) == math.pi/2:
 
-        if r > 200:
+        if r > 300:
             theta_21c -= 2*D2R
             theta_22c -= 2*D2R
             theta_21_2c -= 2*D2R
@@ -405,9 +411,9 @@ def IK_geometric(psi, pose, gripFlag, block_angle = 0):
             soln[3,4] = soln[3,0] + math.pi/2 + block_angle*D2R
 
         # soln[1,4] = pingus
-    print("solution: ")
-    print(R2D*soln[1,:])
-    print(" ")
+    # print("solution: ")
+    # print(R2D*soln[1,:])
+    # print(" ")
     
     
 

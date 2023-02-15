@@ -227,7 +227,7 @@ class StateMachine():
         norm = np.linalg.norm(weighted, ord=2)
         return norm/4
 
-    def moveBlock(self, input_pose, height, prev_psi, block_angle=0):
+    def moveBlock(self, input_pose, height, prev_psi, block_angle=0, e5Flag=False):
         """!
         @brief move the block from one location to another
 
@@ -346,25 +346,48 @@ class StateMachine():
             else:
 
                 lsoln, leavepsi = kinematics.IK_geometric(solnpsi, leave_pose, self.GripFlag)
-                
-            move = self.changeMoveSpeed(lsoln[1,:])
-            self.rxarm.set_moving_time(move)
-            self.rxarm.set_accel_time(move/4)
-            self.rxarm.set_positions(lsoln[1,:])
-            rospy.sleep(1)
 
-            int_pose = np.zeros([1,5])
-            int_pose = np.copy(lsoln[1,:])
-            int_pose[1] = -35.95*D2R
-            int_pose[2] = 21.18*D2R
-            int_pose[3] = -59.59*D2R
-            int_pose[4] = 0.
+            if e5Flag == True:
+                # if we are going to pick up the 12th block during event 5
+                move = self.changeMoveSpeed(lsoln[1,:])
+                self.rxarm.set_moving_time(6*move)
+                self.rxarm.set_accel_time(move/4)
+                self.rxarm.set_positions(lsoln[1,:])
+                rospy.sleep(1)
 
-            move = self.changeMoveSpeed(int_pose)
-            self.rxarm.set_moving_time(move)
-            self.rxarm.set_accel_time(move/4)
-            self.rxarm.set_positions(int_pose)
-            rospy.sleep(1)
+                int_pose = np.zeros([1,5])
+                int_pose = np.copy(lsoln[1,:])
+                int_pose[1] = -35.95*D2R
+                int_pose[2] = 21.18*D2R
+                int_pose[3] = -59.59*D2R
+                int_pose[4] = 0.
+
+                move = self.changeMoveSpeed(int_pose)
+                self.rxarm.set_moving_time(6*move)
+                self.rxarm.set_accel_time(move/4)
+                self.rxarm.set_positions(int_pose)
+                rospy.sleep(1)
+
+            else:
+                # any other movement than the 12th block on event 5
+                move = self.changeMoveSpeed(lsoln[1,:])
+                self.rxarm.set_moving_time(move)
+                self.rxarm.set_accel_time(move/4)
+                self.rxarm.set_positions(lsoln[1,:])
+                rospy.sleep(1)
+
+                int_pose = np.zeros([1,5])
+                int_pose = np.copy(lsoln[1,:])
+                int_pose[1] = -35.95*D2R
+                int_pose[2] = 21.18*D2R
+                int_pose[3] = -59.59*D2R
+                int_pose[4] = 0.
+
+                move = self.changeMoveSpeed(int_pose)
+                self.rxarm.set_moving_time(move)
+                self.rxarm.set_accel_time(move/4)
+                self.rxarm.set_positions(int_pose)
+                rospy.sleep(1)
 
             # move = self.changeMoveSpeed(self.cobra)
             # self.rxarm.set_moving_time(move)
@@ -407,111 +430,133 @@ class StateMachine():
             int_pose[3] = -59.59*D2R
             int_pose[4] = 0.
 
-            move = self.changeMoveSpeed(int_pose)
-            self.rxarm.set_moving_time(move)
-            self.rxarm.set_accel_time(move/4)
-            self.rxarm.set_positions(int_pose)
-            rospy.sleep(1)
+            if e5Flag == True:
+                # moving the twelthfh block
+                move = self.changeMoveSpeed(int_pose)
+                self.rxarm.set_moving_time(6*move)
+                self.rxarm.set_accel_time(move/4)
+                self.rxarm.set_positions(int_pose)
+                rospy.sleep(5)
 
-            move = self.changeMoveSpeed(presoln[1,:])
-            self.rxarm.set_moving_time(move)
-            self.rxarm.set_accel_time(move/4)
-            self.rxarm.set_positions(presoln[1,:])
-            rospy.sleep(2)
+                move = self.changeMoveSpeed(presoln[1,:])
+                self.rxarm.set_moving_time(6*move)
+                self.rxarm.set_accel_time(move/4)
+                self.rxarm.set_positions(presoln[1,:])
+                rospy.sleep(5)
 
-            # this accounts for the increase in height needed to place a block without crashing it into the board or a
-            # target stack of blocks
-            # vertical end effector orientation:
-            if np.abs(prepsi) == math.pi/2:
-            
-                pose[2,0] += height*.6
-            
-            # horizontal end effector orientation:
-            else:
-                pose[2,0] += height*.55
-
-                if height == 25:
-                    pose[2,0] -= 7
-
-            #print(prev_psi)
-            #print(" ")
-            #print("prepsi: " + str(prepsi))
-
-            # if prepsi == prev_psi:
-            #     pass
-
-            # # horizontal to vertical end effector  orientatin change
-            if prepsi == np.abs(math.pi/2) and prev_psi == 0.:  
-                pose[2,0] += 10 #[mm]
-
-            # vertical to horizontal end effector change
-            # elif prepsi == 0.: # and prev_psi == np.abs(math.pi/2):
-            
-            #     # trying to scale things based on the angle to account for the difference in ee position between vertical and horizontal
-            #     x_p = np.copy(pose[0,0])
-            #     y_p = np.copy(pose[1,0])
-            #     theta = R2D * (math.atan2(y_p,x_p) - math.pi/2)
-            #     print("theta: " + str(theta))
-            #     scale = 0.*theta/90
-            #     #print("scale: ")
-            #     #print(scale)
-            #     pose[0,0] *= 1+scale
-            #     pose[1,0] *= 1 + (0.15 - scale)
-            #     #print("horiz pose: ")
-            #     #print(pose)
-            #     pose[2,0] += 2.5 # [mm]
+                # this accounts for the increase in height needed to place a block without crashing it into the board or a
+                # target stack of blocks
+                # vertical end effector orientation:
+                if np.abs(prepsi) == math.pi/2:
                 
-            #     horz_pose = pose.copy()
-            #     horz_pose[2,0] = pre_pose[2,0]
+                    pose[2,0] += height*.6
+                
+                # horizontal end effector orientation:
+                else:
+                    pose[2,0] += height*.55
 
-            #     horiz_soln, horz_psi = kinematics.IK_geometric(prepsi, horz_pose) 
+                    if height == 25:
+                        pose[2,0] -= 7
 
-            #     move = self.changeMoveSpeed(horiz_soln[1,:])
-            #     self.rxarm.set_moving_time(move)
-            #     self.rxarm.set_accel_time(move/4)
-            #     self.rxarm.set_positions(horiz_soln[1,:])
-            #     rospy.sleep(1)
+                # # horizontal to vertical end effector  orientatin change
+                if prepsi == np.abs(math.pi/2) and prev_psi == 0.:  
+                    pose[2,0] += 10 #[mm]
 
-            solns, solnpsi = kinematics.IK_geometric(prepsi, pose, self.GripFlag)
+                solns, solnpsi = kinematics.IK_geometric(prepsi, pose, self.GripFlag)
 
-            
+                move = self.changeMoveSpeed(solns[1,:])
+                self.rxarm.set_moving_time(8*move)
+                self.rxarm.set_accel_time(move/4)
+                self.rxarm.set_positions(solns[1,:])
+                rospy.sleep(5)
+                self.rxarm.open_gripper()
+                self.GripFlag = True
+                print("z: " + str(pose[2,0]))
+                # pre leaving pose --> back up and lift a bit
+                lsoln, leavepsi = kinematics.IK_geometric(solnpsi, leave_pose, self.GripFlag)
 
-            move = self.changeMoveSpeed(solns[1,:])
-            self.rxarm.set_moving_time(3*move)
-            self.rxarm.set_accel_time(move/4)
-            self.rxarm.set_positions(solns[1,:])
-            rospy.sleep(2.5)
-            self.rxarm.open_gripper()
-            self.GripFlag = True
-            print("z: " + str(pose[2,0]))
-            # pre leaving pose --> back up and lift a bit
-            lsoln, leavepsi = kinematics.IK_geometric(solnpsi, leave_pose, self.GripFlag)
+                move = self.changeMoveSpeed(lsoln[1,:])
+                self.rxarm.set_moving_time(6*move)
+                self.rxarm.set_accel_time(move/4)
+                self.rxarm.set_positions(lsoln[1,:])
+                rospy.sleep(5)
 
-            move = self.changeMoveSpeed(lsoln[1,:])
-            self.rxarm.set_moving_time(move)
-            self.rxarm.set_accel_time(move/4)
-            self.rxarm.set_positions(lsoln[1,:])
-            rospy.sleep(1)
+                int_pose = np.zeros([1,5])
+                int_pose = np.copy(lsoln[1,:])
+                int_pose[1] = -35.95*D2R
+                int_pose[2] = 21.18*D2R
+                int_pose[3] = -59.59*D2R
+                int_pose[4] = 0.
 
-            int_pose = np.zeros([1,5])
-            int_pose = np.copy(lsoln[1,:])
-            int_pose[1] = -35.95*D2R
-            int_pose[2] = 21.18*D2R
-            int_pose[3] = -59.59*D2R
-            int_pose[4] = 0.
+                move = self.changeMoveSpeed(int_pose)
+                self.rxarm.set_moving_time(6*move)
+                self.rxarm.set_accel_time(move/4)
+                self.rxarm.set_positions(int_pose)
+                rospy.sleep(5)
 
-            move = self.changeMoveSpeed(int_pose)
-            self.rxarm.set_moving_time(move)
-            self.rxarm.set_accel_time(move/4)
-            self.rxarm.set_positions(int_pose)
-            rospy.sleep(1)
+            else:
+                # not movinv the twetlthth block
+                move = self.changeMoveSpeed(int_pose)
+                self.rxarm.set_moving_time(move)
+                self.rxarm.set_accel_time(move/4)
+                self.rxarm.set_positions(int_pose)
+                rospy.sleep(1)
 
-            # move = self.changeMoveSpeed(self.cobra)
-            # rospy.sleep(1)
-            # #print(move)
-            # self.rxarm.set_moving_time(move)
-            # self.rxarm.set_accel_time(move/4)
-            # self.rxarm.set_positions(self.cobra)
+                move = self.changeMoveSpeed(presoln[1,:])
+                self.rxarm.set_moving_time(move)
+                self.rxarm.set_accel_time(move/4)
+                self.rxarm.set_positions(presoln[1,:])
+                rospy.sleep(2)
+
+                # this accounts for the increase in height needed to place a block without crashing it into the board or a
+                # target stack of blocks
+                # vertical end effector orientation:
+                if np.abs(prepsi) == math.pi/2:
+                
+                    pose[2,0] += height*.6
+                
+                # horizontal end effector orientation:
+                else:
+                    pose[2,0] += height*.55
+
+                    if height == 25:
+                        pose[2,0] -= 7
+
+                # # horizontal to vertical end effector  orientatin change
+                if prepsi == np.abs(math.pi/2) and prev_psi == 0.:  
+                    pose[2,0] += 10 #[mm]
+
+                solns, solnpsi = kinematics.IK_geometric(prepsi, pose, self.GripFlag)
+
+                move = self.changeMoveSpeed(solns[1,:])
+                self.rxarm.set_moving_time(3*move)
+                self.rxarm.set_accel_time(move/4)
+                self.rxarm.set_positions(solns[1,:])
+                rospy.sleep(2.5)
+                self.rxarm.open_gripper()
+                self.GripFlag = True
+                print("z: " + str(pose[2,0]))
+                # pre leaving pose --> back up and lift a bit
+                lsoln, leavepsi = kinematics.IK_geometric(solnpsi, leave_pose, self.GripFlag)
+
+                move = self.changeMoveSpeed(lsoln[1,:])
+                self.rxarm.set_moving_time(move)
+                self.rxarm.set_accel_time(move/4)
+                self.rxarm.set_positions(lsoln[1,:])
+                rospy.sleep(1)
+
+                int_pose = np.zeros([1,5])
+                int_pose = np.copy(lsoln[1,:])
+                int_pose[1] = -35.95*D2R
+                int_pose[2] = 21.18*D2R
+                int_pose[3] = -59.59*D2R
+                int_pose[4] = 0.
+
+                move = self.changeMoveSpeed(int_pose)
+                self.rxarm.set_moving_time(move)
+                self.rxarm.set_accel_time(move/4)
+                self.rxarm.set_positions(int_pose)
+                rospy.sleep(1)
 
         return solnpsi
 
@@ -1192,7 +1237,7 @@ class StateMachine():
             
             block_coordsXYZ.sort(key=sort_by_norm)
 
-            blk_cnt = 0
+            #blk_cnt = 0
             staq_height = 0.
             for elem in block_coordsXYZ:
                 #print(elem)
@@ -1202,93 +1247,69 @@ class StateMachine():
                 z = elem.XYZ[2]
                 print("z in autonomy: ", z)
                 if elem.shape == "large":
-                    elem.XYZ[2] -= 7
+                    elem.XYZ[2] -= 4
                 angle = elem.angle
                 shape = elem.shape
                 if x < -450 or x > 450 or y < -150 or y > 450 or z < -5:
                     print("passed point")
                     pass
                 else:
-                    print("starting movement")
-                    #print(prev_psi)
-                    prev_psi = self.moveBlock(elem.XYZ, elem.height, prev_psi, angle)
-                    rospy.sleep(0.5)
-                    
-                    # ADDING SOME STUFF TO POTENTIALLY IMPROVE AUTONOMY
-                    # Get depth reading at the desired placement x-y position
-                    # CHECK THE VALUE OF z BEFORE RUNNING AUTONOMY - MIGHT NEED TO SUBTRACT 1000
 
-                    #intrinsic = self.camera.intrinsic_matrix
-                    #extrinsic = self.camera.extrinsic_matrix
-
-                    ## GIVING UP ON THIS FOR NOW -- SEEMS LIKE A PARADOX 
-                    # this if statements finds the z_world value of a specified point in pixel coordinates
-                    # if self.camera.homography.size != 0:
+                    # this is for the first 11 blocks
+                    if x > 0:
+                        print("starting movement")
+                        #print(prev_psi)
+                        prev_psi = self.moveBlock(elem.XYZ, elem.height, prev_psi, angle)
+                        rospy.sleep(0.5)
                         
-                    #     # need to do the z measurement based off the x,y position because the pixel
-                    #     # values do not change as the blocks stack, while the x,y positions do
-                    drop_pt_world = np.array([[0],[225],[staq_height]]) 
-                        
-
-                    #     drop_pt_cam = np.matmul(np.linalg.inv(extrinsic), drop_pt_world)
-                    #     print(drop_pt_cam)
-
-
-                    #     uv_trans = np.zeros([3,1])
-                
-                    #     # CAN CUSTOMIZE THIS TO PICK ANY POINT ON THE BOARD OR CALCULATE A POINT TO PLACE THE BLOCK
-                        
-                    #     # pixel coordinates in homography --> they are in this form arbitarily, we could pick pre-homography pixel coords to get
-                    #     # depth reading from... i just did it because that way i can pick points from the calibrated video display
-                    #     uv_hom = np.array([[820],[334],[1]])
-
-                    #     # undoing hommography transform
-                    #     uv_trans = np.matmul( np.linalg.inv(self.camera.homography) , uv_hom )
-                    #     # print("uv_trans")
-                    #     # print(uv_trans)
-                    #     # print(" ")
-
-                    #     # normalizing x and y pixel locations
-                    #     uv_trans[0,0] /= uv_trans[2,0]
-                    #     uv_trans[1,0] /= uv_trans[2,0]
-                    #     uv_trans[2,0] = 1
-                
-                    #     z = self.camera.DepthFrameRaw[int(uv_trans[1,0])][int(uv_trans[0,0])]
-                    # #print(z)
-                    #     cam_coords = z*np.matmul(np.linalg.inv(intrinsic), uv_trans)
-                    #     #print("state machine: ")
-                    #     #
-                    #     print(cam_coords)
-                    #     # print("z")
-                    #     # print(z)
-                    #     # print(" ")
-                                
-                    #     world_coords = np.matmul(extrinsic, np.append(np.array(cam_coords),1))
-                    
-                    #     # the depth reading in world coordinates of the specific point of interest for block placement
-                    #     z_w = world_coords[2]
-
-                    #     print("world coords")
-                    #     print(world_coords)
-                    #     print(" ")
-                    ## GIVING UP ON THIS FOR NOW -- SEEMS LIKE A PARADOX 
-                    if shape == "large":
-                        prev_psi = self.moveBlock(np.array([drop_pt_world[0],drop_pt_world[1],staq_height]), elem.height, prev_psi)
-                    if shape == "small":
-                        prev_psi = self.moveBlock(np.array([drop_pt_world[0],drop_pt_world[1],staq_height]), elem.height, prev_psi)
+                        drop_pt_world = np.array([[0],[225],[staq_height]]) 
                             
+                        prev_psi = self.moveBlock(np.array([drop_pt_world[0],drop_pt_world[1],staq_height]), elem.height, prev_psi)      
+                        
+                        rospy.sleep(0.5)
+                        staq_height += elem.height
+                        #blk_cnt += 1
                     
-                    rospy.sleep(0.5)
-                    staq_height += elem.height
-                    blk_cnt += 1
+                    else: 
+                        continue
+
+            # rescanning for negative x coordinate blocks ( should be 3 for now )
+            self.camera.blockDetector(True)
+            block_coordsXYZ = list(self.camera.block_coords)
+            while (len(block_coordsXYZ) < self.camera.num_blocks):
+                block_coordsXYZ = list(self.camera.block_coords)
+            block_coordsXYZ.sort(key=sort_by_norm)
+
+            count = 0
+            height = 0
+            for elem in block_coordsXYZ:
+
+                # ignore the tall stack we have created
+                if elem.XYZ[0] > -50:
+                    continue
+                # the blocks we are interested in:
+                else:
+                    if count < 2: 
+                        prev_psi = self.moveBlock(elem.XYZ, elem.height, prev_psi, angle)
+                        rospy.sleep(0.5)
+                        drop_point = np.array([[block_coordsXYZ[2].XYZ[0]], [block_coordsXYZ[2].XYZ[1]], [height]])
+                        # attempting to make the arm place the first two blocks on top of the third block which should be the farthest away
+                        prev_psi = self.moveBlock(drop_point, elem.height, prev_psi)      
+                        rospy.sleep(0.5)
+
+                        count += 1
+                        height += elem.height
+                    else:
+                        # going to the third blocks location
+                        prev_psi = self.moveBlock(elem.XYZ, elem.height, prev_psi, angle, True)
+                        rospy.sleep(0.5)
 
 
-                
-        # end check to determine if the autonomy button is still pressed
-        #if self.autoFlag == True:
-        #    self.autonomy()
-        #else:
-        #    pass
+                        prev_psi = self.moveBlock(np.array([drop_pt_world[0],drop_pt_world[1],staq_height]), elem.height, prev_psi, True)  
+                        rospy.sleep(0.5)
+
+
+                            
    
 class StateMachineThread(QThread):
     """!

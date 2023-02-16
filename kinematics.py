@@ -326,14 +326,14 @@ def IK_geometric(psi, pose, gripFlag, block_angle = 0):
         # this if elif else adjusts the shoulder angle for gravity depending on how low the target height is
         # there might need to be more work done here - this was just an initial attempt at scaling to compensate for motor sag
         angle = 0
-        if z_c < 80:
+        if z_c < 80 and r > 250:
             angle = 8
             theta_21c -= angle*D2R
             theta_22c -= angle*D2R
             theta_21_2c -= angle*D2R
             theta_22_2c -= angle*D2R
     
-        elif z_c < 160:
+        elif z_c < 160 and r > 250:
             angle = 6.5
             theta_21c -= angle*D2R
             theta_22c -= angle*D2R

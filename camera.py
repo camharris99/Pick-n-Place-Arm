@@ -335,7 +335,7 @@ class Camera():
             contour_color = (23,200,250)
             color_index = 2
         elif (color == "green"):
-            mask = cv2.inRange(copy, (50,70,50), (90, 255, 255))
+            mask = cv2.inRange(copy, (50,70,70), (90, 255, 255))
             contour_color = (75,255,255)
             color_index = 3
         elif (color == "blue"):
